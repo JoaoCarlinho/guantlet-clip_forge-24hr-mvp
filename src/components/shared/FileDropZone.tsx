@@ -1,8 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useActions } from 'kea';
 import { timelineLogic, type Clip } from '../../logic/timelineLogic';
-import { listen } from '@tauri-apps/api/event';
-import { convertFileSrc } from '@tauri-apps/api/core';
 import './FileDropZone.css';
 
 interface FileDropZoneProps {
@@ -15,75 +13,114 @@ export default function FileDropZone({ children }: FileDropZoneProps) {
   const { addClip } = useActions(timelineLogic);
   const dragCounter = useRef(0);
 
-  // Tauri file drop event listeners
+  // Tauri V2 file drop event listeners
   useEffect(() => {
-    let unlisten: (() => void) | undefined;
+    let unlisteners: Array<() => void> = [];
 
-    // Check if running in Tauri
-    if (window.__TAURI__) {
-      console.log('Setting up Tauri file drop listeners...');
+    console.log('🔍 FileDropZone mounted, checking environment...');
 
-      // Listen for file drop hover events
-      listen('tauri://drag-over', () => {
-        console.log('Tauri drag-over event');
-        setIsDragging(true);
-      }).then(fn => {
-        unlisten = fn;
-      });
+    const setupTauriListeners = async () => {
+      try {
+        // Try to import Tauri V2 event module
+        const { listen } = await import('@tauri-apps/api/event');
 
-      // Listen for file drop events
-      listen<string[]>('tauri://drop', async (event) => {
-        console.log('Tauri drop event:', event.payload);
-        setIsDragging(false);
+        console.log('✅ Tauri API loaded - setting up native file drop');
+        console.log('🔍 Running in: TAURI MODE (V2)');
 
-        // event.payload contains array of file paths
-        const filePaths = event.payload;
-        await processFilePaths(filePaths);
-      });
+        // Listen for file drop events using string event names
+        // Tauri V2 file-drop events use these specific string names
+        const unlistenDrop = await listen('tauri://file-drop', async (event: any) => {
+          console.log('🟢 Tauri file-drop event:', event.payload);
+          setIsDragging(false);
+          dragCounter.current = 0;
 
-      // Listen for drag leave/cancel
-      listen('tauri://drag-drop', () => {
-        console.log('Tauri drag-drop event');
-        setIsDragging(false);
-      });
-    }
+          const filePaths = event.payload as string[];
+          console.log(`📁 Received ${filePaths.length} file path(s) from Tauri:`, filePaths);
+          await processFilePaths(filePaths);
+        });
+        unlisteners.push(unlistenDrop);
+        console.log('✅ Tauri file-drop listener registered');
+
+        // Listen for drag hover events
+        const unlistenHover = await listen('tauri://file-drop-hover', () => {
+          console.log('🟢 Tauri file-drop-hover event');
+          setIsDragging(true);
+        });
+        unlisteners.push(unlistenHover);
+        console.log('✅ Tauri file-drop-hover listener registered');
+
+        // Listen for drag cancelled events
+        const unlistenCancelled = await listen('tauri://file-drop-cancelled', () => {
+          console.log('🟢 Tauri file-drop-cancelled event');
+          setIsDragging(false);
+          dragCounter.current = 0;
+        });
+        unlisteners.push(unlistenCancelled);
+        console.log('✅ Tauri file-drop-cancelled listener registered');
+
+      } catch (error) {
+        console.log('ℹ️ Tauri not available - using HTML5 drag-and-drop only');
+        console.log('🔍 Running in: BROWSER MODE');
+        console.log('Error details:', error);
+      }
+    };
+
+    setupTauriListeners();
 
     return () => {
-      if (unlisten) unlisten();
+      console.log('🧹 Cleaning up Tauri listeners');
+      unlisteners.forEach(unlisten => unlisten());
     };
   }, []);
 
   const handleDragEnter = (e: React.DragEvent) => {
+    console.log('🎯 DRAG ENTER EVENT FIRED', {
+      dragCounter: dragCounter.current,
+      hasItems: e.dataTransfer.items?.length > 0,
+      itemsLength: e.dataTransfer.items?.length,
+      types: Array.from(e.dataTransfer.types || [])
+    });
     e.preventDefault();
     e.stopPropagation();
     dragCounter.current++;
     if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      console.log('✅ Setting isDragging to TRUE');
       setIsDragging(true);
     }
   };
 
   const handleDragOver = (e: React.DragEvent) => {
+    console.log('🔄 DRAG OVER EVENT FIRED');
     e.preventDefault();
     e.stopPropagation();
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
+    console.log('🚪 DRAG LEAVE EVENT FIRED', {
+      dragCounter: dragCounter.current,
+      willHide: dragCounter.current - 1 === 0
+    });
     e.preventDefault();
     e.stopPropagation();
     dragCounter.current--;
     if (dragCounter.current === 0) {
+      console.log('❌ Setting isDragging to FALSE');
       setIsDragging(false);
     }
   };
 
   const handleDrop = async (e: React.DragEvent) => {
+    console.log('📦 DROP EVENT FIRED', {
+      filesCount: e.dataTransfer.files.length,
+      types: Array.from(e.dataTransfer.types || [])
+    });
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
     dragCounter.current = 0;
 
     const files = Array.from(e.dataTransfer.files);
-    console.log(`Dropped ${files.length} file(s)`);
+    console.log(`📁 Dropped ${files.length} file(s):`, files.map(f => f.name));
     await processFiles(files);
   };
 
@@ -108,6 +145,7 @@ export default function FileDropZone({ children }: FileDropZoneProps) {
         console.log(`Processing file path: ${filePath}`);
 
         // Convert file path to a URL that can be used by the video element
+        const { convertFileSrc } = await import('@tauri-apps/api/core');
         const videoUrl = convertFileSrc(filePath);
         const video = document.createElement('video');
 
@@ -227,6 +265,7 @@ export default function FileDropZone({ children }: FileDropZoneProps) {
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
+      style={{ border: '2px dashed red', minHeight: '200px' }} // DEBUG: Visual indicator
     >
       <input
         ref={fileInputRef}

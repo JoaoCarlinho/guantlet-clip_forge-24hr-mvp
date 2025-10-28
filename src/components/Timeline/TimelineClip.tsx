@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { useActions } from 'kea';
+import { useActions, useValues } from 'kea';
 import { timelineLogic, type Clip } from '../../logic/timelineLogic';
 import './TimelineClip.css';
 
@@ -11,8 +11,13 @@ interface TimelineClipProps {
 }
 
 export default function TimelineClip({ clip, isSelected, pixelsPerSecond, onSelect }: TimelineClipProps) {
-  const { setTrimPoints } = useActions(timelineLogic);
+  const { setTrimPoints, deleteClipOutsideMarkers, startTrimDrag, updateTrimPreview, endTrimDrag } = useActions(timelineLogic);
+  const { clipHasTrims, clipDeletionInfo } = useValues(timelineLogic);
   const clipRef = useRef<HTMLDivElement>(null);
+  const lastPreviewUpdate = useRef<number>(0);
+
+  const hasTrimMarkers = clipHasTrims[clip.id];
+  const deletionInfo = clipDeletionInfo[clip.id];
 
   const trimStartPixels = clip.trimStart * pixelsPerSecond;
   const trimEndPixels = clip.trimEnd * pixelsPerSecond;
@@ -24,15 +29,29 @@ export default function TimelineClip({ clip, isSelected, pixelsPerSecond, onSele
     const startX = e.clientX;
     const originalTrimStart = clip.trimStart;
 
+    // Start trim drag preview
+    startTrimDrag(clip.id, 'in', originalTrimStart);
+
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const deltaX = moveEvent.clientX - startX;
       const deltaTime = deltaX / pixelsPerSecond;
       const newTrimStart = Math.max(0, Math.min(clip.trimEnd - 0.1, originalTrimStart + deltaTime));
 
+      // Update trim points for visual feedback (always update)
       setTrimPoints(clip.id, newTrimStart, clip.trimEnd);
+
+      // Throttle preview updates to ~30fps for smoother video seeking
+      const now = performance.now();
+      if (now - lastPreviewUpdate.current >= 33) {  // ~30fps
+        updateTrimPreview(newTrimStart);
+        lastPreviewUpdate.current = now;
+      }
     };
 
     const handleMouseUp = () => {
+      // End trim drag preview
+      endTrimDrag();
+
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
@@ -47,15 +66,29 @@ export default function TimelineClip({ clip, isSelected, pixelsPerSecond, onSele
     const startX = e.clientX;
     const originalTrimEnd = clip.trimEnd;
 
+    // Start trim drag preview
+    startTrimDrag(clip.id, 'out', originalTrimEnd);
+
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const deltaX = moveEvent.clientX - startX;
       const deltaTime = deltaX / pixelsPerSecond;
       const newTrimEnd = Math.min(clip.duration, Math.max(clip.trimStart + 0.1, originalTrimEnd + deltaTime));
 
+      // Update trim points for visual feedback (always update)
       setTrimPoints(clip.id, clip.trimStart, newTrimEnd);
+
+      // Throttle preview updates to ~30fps for smoother video seeking
+      const now = performance.now();
+      if (now - lastPreviewUpdate.current >= 33) {  // ~30fps
+        updateTrimPreview(newTrimEnd);
+        lastPreviewUpdate.current = now;
+      }
     };
 
     const handleMouseUp = () => {
+      // End trim drag preview
+      endTrimDrag();
+
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
@@ -68,6 +101,18 @@ export default function TimelineClip({ clip, isSelected, pixelsPerSecond, onSele
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const formatDuration = (seconds: number): string => {
+    if (seconds < 1) {
+      return `${(seconds * 1000).toFixed(0)}ms`;
+    }
+    return formatTime(seconds);
+  };
+
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    deleteClipOutsideMarkers(clip.id);
   };
 
   return (
@@ -140,6 +185,18 @@ export default function TimelineClip({ clip, isSelected, pixelsPerSecond, onSele
               <span className="trim-marker-label">OUT</span>
             </div>
           </div>
+
+          {/* Delete button - only show if clip has been trimmed */}
+          {hasTrimMarkers && (
+            <button
+              className="clip-delete-button"
+              onClick={handleDeleteClick}
+              title={`Delete ${formatDuration(deletionInfo.totalDeleted)} outside markers`}
+            >
+              <span className="delete-icon">✂</span>
+              <span className="delete-label">Delete Outside Markers</span>
+            </button>
+          )}
         </>
       )}
     </div>

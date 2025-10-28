@@ -102,3 +102,33 @@
   font-size: 0.9rem !important;
   color: #555;
 }
+
+/* Trim Preview Indicator */
+.trim-preview-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background-color: rgba(100, 108, 255, 0.1);
+  border: 1px solid rgba(100, 108, 255, 0.3);
+  border-radius: 4px;
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+  color: #646cff;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.preview-icon {
+  font-size: 1rem;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

@@ -5,7 +5,7 @@ import FileDropZone from '../shared/FileDropZone';
 import './VideoPlayer.css';
 
 export default function VideoPlayer() {
-  const { clips, selectedClip, isPlaying } = useValues(timelineLogic);
+  const { clips, selectedClip, isPlaying, effectivePreviewTime, activeTrimClipId, activeTrimType } = useValues(timelineLogic);
   const { setCurrentTime, pause, play } = useActions(timelineLogic);
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -166,6 +166,27 @@ export default function VideoPlayer() {
     }
   }, [isPlaying, currentClip]);
 
+  // Update video preview during trim adjustment
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !currentClip) return;
+
+    // Only update preview if we have a preview time
+    if (effectivePreviewTime !== null) {
+      // Check if this is an active trim operation
+      const isActiveTrim = activeTrimClipId === currentClip.id;
+
+      if (isActiveTrim) {
+        // During active trim: seek to preview time immediately
+        video.currentTime = effectivePreviewTime;
+      } else if (!isPlaying) {
+        // Not actively trimming, but video is paused: show IN marker frame
+        video.currentTime = effectivePreviewTime;
+      }
+      // If playing, don't interrupt playback
+    }
+  }, [effectivePreviewTime, activeTrimClipId, currentClip?.id, isPlaying]);
+
   // Cleanup video resources on unmount
   useEffect(() => {
     return () => {
@@ -307,6 +328,14 @@ export default function VideoPlayer() {
                 <span>Clip has trim points applied</span>
               </div>
             ) : null}
+            {activeTrimClipId === currentClip.id && (
+              <div className="trim-preview-indicator">
+                <span className="preview-icon">✂️</span>
+                <span>
+                  Adjusting {activeTrimType === 'in' ? 'IN' : 'OUT'} point - Preview: {formatDuration(effectivePreviewTime || 0)}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       )}

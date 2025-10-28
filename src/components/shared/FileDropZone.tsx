@@ -1,7 +1,6 @@
 import { useState, useRef } from 'react';
 import { useActions } from 'kea';
 import { timelineLogic, type Clip } from '../../logic/timelineLogic';
-import { convertFileSrc } from '@tauri-apps/api/core';
 import './FileDropZone.css';
 
 interface FileDropZoneProps {
@@ -12,25 +11,39 @@ export default function FileDropZone({ children }: FileDropZoneProps) {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { addClip } = useActions(timelineLogic);
+  const dragCounter = useRef(0);
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current++;
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setIsDragging(true);
+    }
+  };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDragging(true);
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDragging(false);
+    dragCounter.current--;
+    if (dragCounter.current === 0) {
+      setIsDragging(false);
+    }
   };
 
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
+    dragCounter.current = 0;
 
     const files = Array.from(e.dataTransfer.files);
+    console.log(`Dropped ${files.length} file(s)`);
     await processFiles(files);
   };
 
@@ -55,31 +68,40 @@ export default function FileDropZone({ children }: FileDropZoneProps) {
       }
 
       try {
-        // Create a temporary URL to get video metadata
+        console.log(`Processing file: ${file.name}, type: ${file.type}, size: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
+
+        // Create a blob URL for the video file
+        // This URL will persist and can be used by the video player
         const videoUrl = URL.createObjectURL(file);
         const video = document.createElement('video');
 
         // Wait for video metadata to load
         await new Promise<void>((resolve, reject) => {
-          video.onloadedmetadata = () => resolve();
-          video.onerror = () => reject(new Error('Failed to load video metadata'));
+          const timeout = setTimeout(() => {
+            reject(new Error('Timeout loading video metadata'));
+          }, 10000); // 10 second timeout
+
+          video.onloadedmetadata = () => {
+            clearTimeout(timeout);
+            resolve();
+          };
+          video.onerror = () => {
+            clearTimeout(timeout);
+            reject(new Error('Failed to load video metadata'));
+          };
           video.src = videoUrl;
         });
 
         const duration = video.duration;
-        URL.revokeObjectURL(videoUrl);
 
-        // For Tauri, we need to use the file path
-        // In a real implementation, we'd use Tauri's file system API
-        // For now, we'll use the file name and create a convertFileSrc path
-        const filePath = `/${file.name}`;
-        const convertedPath = convertFileSrc(filePath);
+        // Important: Don't revoke the blob URL - we need it for playback
+        // It will be cleaned up when the clip is removed or page is closed
 
-        // Create clip object
+        // Create clip object with blob URL
         const clip: Clip = {
           id: `clip-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           name: file.name,
-          filePath: convertedPath,
+          filePath: videoUrl, // Use blob URL directly
           duration,
           startTime: 0, // Will be set when added to timeline
           endTime: duration,
@@ -88,9 +110,9 @@ export default function FileDropZone({ children }: FileDropZoneProps) {
         };
 
         addClip(clip);
-        console.log(`Added clip: ${file.name} (${duration.toFixed(2)}s)`);
+        console.log(`✓ Added clip: ${file.name} (${duration.toFixed(2)}s)`);
       } catch (error) {
-        console.error(`Error processing file ${file.name}:`, error);
+        console.error(`✗ Error processing file ${file.name}:`, error);
       }
     }
   };
@@ -102,6 +124,7 @@ export default function FileDropZone({ children }: FileDropZoneProps) {
   return (
     <div
       className={`file-drop-zone ${isDragging ? 'dragging' : ''}`}
+      onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}

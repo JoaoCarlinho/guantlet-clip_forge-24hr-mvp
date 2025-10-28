@@ -31,7 +31,7 @@
   border: 1px solid #333;
   color: #aaa;
   font-size: 0.875rem;
-  min-width: 300px;
+  min-width: 350px;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -41,16 +41,37 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 1rem;
 }
 
 .info-label {
   font-weight: 600;
   color: #888;
+  white-space: nowrap;
 }
 
 .info-value {
   color: #ccc;
   font-family: monospace;
+  font-size: 0.8rem;
+  text-align: right;
+}
+
+.trim-warning {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background-color: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 4px;
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+  color: #fbbf24;
+}
+
+.warning-icon {
+  font-size: 1rem;
 }
 
 .video-placeholder {

@@ -1,5 +1,6 @@
 import { useValues, useActions } from 'kea';
 import { timelineLogic, type Clip } from '../../logic/timelineLogic';
+import TimelineClip from './TimelineClip';
 import Button from '../shared/Button';
 import './Timeline.css';
 
@@ -49,21 +50,13 @@ export default function Timeline() {
               }}
             >
               {clips.map((clip: Clip) => (
-                <div
+                <TimelineClip
                   key={clip.id}
-                  className={`timeline-clip ${selectedClipId === clip.id ? 'selected' : ''}`}
-                  onClick={() => selectClip(clip.id)}
-                  style={{
-                    left: `${clip.startTime * pixelsPerSecond}px`,
-                    width: `${clip.duration * pixelsPerSecond}px`,
-                  }}
-                  title={`${clip.name} (${formatTime(clip.duration)})`}
-                >
-                  <div className="clip-content">
-                    <div className="clip-name">{clip.name}</div>
-                    <div className="clip-duration">{formatTime(clip.duration)}</div>
-                  </div>
-                </div>
+                  clip={clip}
+                  isSelected={selectedClipId === clip.id}
+                  pixelsPerSecond={pixelsPerSecond}
+                  onSelect={() => selectClip(clip.id)}
+                />
               ))}
 
               {/* Playhead */}

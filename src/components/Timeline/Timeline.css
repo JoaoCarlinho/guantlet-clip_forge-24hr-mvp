@@ -1,3 +1,5 @@
+@import './TimelineClip.css';
+
 .timeline-container {
   display: flex;
   flex-direction: column;

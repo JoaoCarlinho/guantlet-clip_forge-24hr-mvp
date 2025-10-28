@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: clipforge_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  # Optional: MinIO for object storage (post-MVP)
+  # minio:
+  #   image: minio/minio:latest
+  #   container_name: clipforge_minio
+  #   ports:
+  #     - "9000:9000"
+  #     - "9001:9001"
+  #   environment:
+  #     MINIO_ROOT_USER: minioadmin
+  #     MINIO_ROOT_PASSWORD: minioadmin
+  #   volumes:
+  #     - minio_data:/data
+  #   command: server /data --console-address ":9001"
+  #   restart: unless-stopped
+
+  # Optional: PostgreSQL (post-MVP)
+  # postgres:
+  #   image: postgres:15-alpine
+  #   container_name: clipforge_postgres
+  #   environment:
+  #     POSTGRES_USER: clipforge
+  #     POSTGRES_PASSWORD: clipforge_dev
+  #     POSTGRES_DB: clipforge_dev
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U clipforge"]
+  #     interval: 5s
+  #     timeout: 3s
+  #     retries: 5
+  #   restart: unless-stopped
+
+volumes:
+  redis_data:
+  # minio_data:
+  # postgres_data:

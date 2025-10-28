@@ -45,3 +45,6 @@ docker-compose.override.yml
 *.deb
 *.rpm
 *.AppImage
+
+# planning docs
+dev_docs/

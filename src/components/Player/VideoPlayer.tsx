@@ -5,7 +5,7 @@ import FileDropZone from '../shared/FileDropZone';
 import './VideoPlayer.css';
 
 export default function VideoPlayer() {
-  const { clips, selectedClip } = useValues(timelineLogic);
+  const { clips, selectedClip, isPlaying } = useValues(timelineLogic);
   const { setCurrentTime, pause, play } = useActions(timelineLogic);
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -19,8 +19,16 @@ export default function VideoPlayer() {
     hasCurrentClip: !!currentClip,
     currentClipPath: currentClip?.filePath,
     currentClipName: currentClip?.name,
-    currentClipId: currentClip?.id
+    currentClipId: currentClip?.id,
+    willShowVideo: !!currentClip,
+    willShowDropZone: !currentClip
   });
+
+  if (currentClip) {
+    console.log('✅ VIDEO WRAPPER WILL BE RENDERED');
+  } else {
+    console.log('📂 FILE DROP ZONE WILL BE SHOWN');
+  }
 
   // Set video to trim start when clip changes and add detailed event logging
   useEffect(() => {
@@ -32,7 +40,20 @@ export default function VideoPlayer() {
       // Force video to load the new source
       videoRef.current.src = currentClip.filePath;
       videoRef.current.load();
-      videoRef.current.currentTime = currentClip.trimStart;
+
+      // Wait for metadata before setting currentTime to avoid black screen
+      const setInitialTime = () => {
+        if (videoRef.current && videoRef.current.readyState >= 1) {
+          videoRef.current.currentTime = currentClip.trimStart;
+          console.log('⏱️ Set initial currentTime to trimStart:', currentClip.trimStart);
+        }
+      };
+
+      if (videoRef.current.readyState >= 1) {
+        setInitialTime();
+      } else {
+        videoRef.current.addEventListener('loadedmetadata', setInitialTime, { once: true });
+      }
 
       // Add comprehensive event listeners for debugging
       const video = videoRef.current;
@@ -55,6 +76,28 @@ export default function VideoPlayer() {
 
       const handleCanPlay = () => {
         console.log('✅ Video can play:', currentClip.name);
+        const computed = window.getComputedStyle(video);
+        console.log('🎥 Video element dimensions:', {
+          offsetWidth: video.offsetWidth,
+          offsetHeight: video.offsetHeight,
+          clientWidth: video.clientWidth,
+          clientHeight: video.clientHeight,
+          videoWidth: video.videoWidth,
+          videoHeight: video.videoHeight,
+          display: computed.display,
+          visibility: computed.visibility,
+          opacity: computed.opacity,
+          zIndex: computed.zIndex,
+          position: computed.position,
+          width: computed.width,
+          height: computed.height
+        });
+
+        // Try to force a repaint
+        video.style.display = 'none';
+        video.offsetHeight; // Force reflow
+        video.style.display = 'block';
+        console.log('🔄 Forced video repaint');
       };
 
       const handleError = (e: Event) => {
@@ -92,6 +135,36 @@ export default function VideoPlayer() {
       };
     }
   }, [currentClip?.id, currentClip?.filePath]);
+
+  // Sync isPlaying state with actual video playback
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !currentClip) return;
+
+    console.log('🎮 isPlaying state changed:', isPlaying);
+
+    if (isPlaying) {
+      // Play the video
+      const playPromise = video.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            console.log('✅ Video started playing from state change');
+          })
+          .catch((error) => {
+            console.error('❌ Failed to play video:', error);
+            // If play fails, update state back to paused
+            pause();
+          });
+      }
+    } else {
+      // Pause the video
+      if (!video.paused) {
+        video.pause();
+        console.log('⏸️ Video paused from state change');
+      }
+    }
+  }, [isPlaying, currentClip]);
 
   // Cleanup video resources on unmount
   useEffect(() => {
@@ -149,34 +222,45 @@ export default function VideoPlayer() {
   const trimmedDuration = currentClip ? currentClip.trimEnd - currentClip.trimStart : 0;
 
   return (
-    <div className="video-player-container" style={{ position: 'relative' }}>
+    <div className="video-player-container" style={{ position: 'relative', height: '100%', width: '100%', maxWidth: '100%', minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', boxSizing: 'border-box', overflow: 'hidden' }}>
       {/* Always render FileDropZone to keep drag-drop listeners active */}
-      {/* It will be hidden behind the video player when a clip is playing */}
-      <FileDropZone>
-        {!currentClip && (
-          /* Show drop zone content only when no clips loaded */
-          null  /* Content is rendered inside FileDropZone component */
-        )}
-      </FileDropZone>
+      {/* Hide it completely when video is playing */}
+      <div style={{ display: currentClip ? 'none' : 'block', height: '100%', width: '100%' }}>
+        <FileDropZone />
+      </div>
 
-      {/* Show video player overlaid on top when clip exists */}
+      {/* Show video player when clip exists */}
       {currentClip && (
         <div
           className="video-wrapper"
           style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 10,
-            backgroundColor: '#0a0a0a'
+            display: 'flex',
+            flexDirection: 'column',
+            height: '100%',
+            width: '100%',
+            maxWidth: '900px',
+            minWidth: 0,
+            padding: '1rem',
+            gap: '1rem',
+            alignItems: 'center',
+            justifyContent: 'center',
+            overflowX: 'hidden',
+            overflowY: 'auto',
+            boxSizing: 'border-box'
           }}
         >
           <video
             ref={videoRef}
             className="video-element"
             controls
+            style={{
+              width: '100%',
+              maxWidth: '800px',
+              height: 'auto',
+              aspectRatio: '4/3',
+              objectFit: 'contain',
+              boxSizing: 'border-box'
+            }}
             onTimeUpdate={handleTimeUpdate}
             onPause={() => pause()}
             onPlay={handlePlay}

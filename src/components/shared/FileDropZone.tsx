@@ -265,7 +265,6 @@ export default function FileDropZone({ children }: FileDropZoneProps) {
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      style={{ border: '2px dashed red', minHeight: '200px' }} // DEBUG: Visual indicator
     >
       <input
         ref={fileInputRef}

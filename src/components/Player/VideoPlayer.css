@@ -18,8 +18,7 @@
 }
 
 .video-element {
-  max-width: 100%;
-  max-height: calc(100% - 80px);
+  /* Removed max-width and max-height - using inline styles instead */
   border-radius: 4px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 }

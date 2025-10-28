@@ -1,6 +1,6 @@
 // Module declarations
 mod config;
-mod cache;
+// mod cache;  // Disabled - placeholder implementation not needed for MVP
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -14,9 +14,9 @@ pub fn run() {
         )?;
       }
 
+      // Cache module disabled for MVP - placeholder implementation only
       // TODO: Initialize cache service when Redis is fully configured
       // let cache = cache::CacheService::new("redis://localhost:6379")?;
-      log::info!("Cache module loaded (placeholder mode)");
 
       Ok(())
     })

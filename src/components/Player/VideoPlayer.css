@@ -31,10 +31,26 @@
   border: 1px solid #333;
   color: #aaa;
   font-size: 0.875rem;
+  min-width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
-.video-info p {
-  margin: 0.25rem 0;
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.info-label {
+  font-weight: 600;
+  color: #888;
+}
+
+.info-value {
+  color: #ccc;
+  font-family: monospace;
 }
 
 .video-placeholder {

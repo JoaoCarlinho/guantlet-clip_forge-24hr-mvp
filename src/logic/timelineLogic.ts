@@ -42,7 +42,20 @@ export const timelineLogic = kea([
     clips: [
       [] as Clip[],
       {
-        addClip: (state, { clip }) => [...state, clip],
+        addClip: (state, { clip }) => {
+          // Calculate start time based on existing clips
+          const lastClip = state.length > 0 ? state[state.length - 1] : null;
+          const startTime = lastClip ? lastClip.endTime : 0;
+
+          return [
+            ...state,
+            {
+              ...clip,
+              startTime,
+              endTime: startTime + clip.duration,
+            },
+          ];
+        },
         removeClip: (state, { clipId }) => state.filter((c: Clip) => c.id !== clipId),
         updateClip: (state, { clipId, updates }) =>
           state.map((clip: Clip) => (clip.id === clipId ? { ...clip, ...updates } : clip)),

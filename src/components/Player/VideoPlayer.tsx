@@ -1,12 +1,14 @@
 import { useValues, useActions } from 'kea';
 import { timelineLogic } from '../../logic/timelineLogic';
+import FileDropZone from '../shared/FileDropZone';
 import './VideoPlayer.css';
 
 export default function VideoPlayer() {
-  const { clips, selectedClip } = useValues(timelineLogic);
-  const { setCurrentTime } = useActions(timelineLogic);
+  const { clips, selectedClip, isPlaying } = useValues(timelineLogic);
+  const { setCurrentTime, pause } = useActions(timelineLogic);
 
-  const currentClip = clips.length > 0 ? clips[0] : null;
+  // Use selected clip if available, otherwise use the first clip
+  const currentClip = selectedClip || (clips.length > 0 ? clips[0] : null);
 
   return (
     <div className="video-player-container">
@@ -15,43 +17,40 @@ export default function VideoPlayer() {
           <video
             className="video-element"
             controls
+            autoPlay={isPlaying}
             onTimeUpdate={(e) => {
               const video = e.currentTarget;
               setCurrentTime(video.currentTime);
             }}
+            onPause={() => pause()}
+            onEnded={() => pause()}
+            key={currentClip.id}
           >
             <source src={currentClip.filePath} type="video/mp4" />
             Your browser does not support the video tag.
           </video>
 
-          {selectedClip && (
-            <div className="video-info">
-              <p>Selected: {selectedClip.name}</p>
-              <p>Duration: {formatDuration(selectedClip.duration)}</p>
-              <p>
-                Trim: {formatDuration(selectedClip.trimStart)} -{' '}
-                {formatDuration(selectedClip.trimEnd)}
-              </p>
+          <div className="video-info">
+            <div className="info-row">
+              <span className="info-label">Clip:</span>
+              <span className="info-value">{currentClip.name}</span>
             </div>
-          )}
-        </div>
-      ) : (
-        <div className="video-placeholder">
-          <div className="placeholder-content">
-            <svg
-              width="80"
-              height="80"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <polygon points="5 3 19 12 5 21 5 3"></polygon>
-            </svg>
-            <p>No video loaded</p>
-            <p className="placeholder-hint">Import a video to get started</p>
+            <div className="info-row">
+              <span className="info-label">Duration:</span>
+              <span className="info-value">{formatDuration(currentClip.duration)}</span>
+            </div>
+            {selectedClip && (
+              <div className="info-row">
+                <span className="info-label">Trim:</span>
+                <span className="info-value">
+                  {formatDuration(currentClip.trimStart)} - {formatDuration(currentClip.trimEnd)}
+                </span>
+              </div>
+            )}
           </div>
         </div>
+      ) : (
+        <FileDropZone />
       )}
     </div>
   );

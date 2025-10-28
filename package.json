@@ -12,6 +12,7 @@
   "author": "JoaoCarlinho <JSkeete@gmail.com>",
   "license": "MIT",
   "dependencies": {
+    "@tauri-apps/api": "^2.9.0",
     "kea": "^3.1.7",
     "kea-loaders": "^3.1.1",
     "kea-router": "^3.4.1",

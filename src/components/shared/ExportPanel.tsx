@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { useValues, useActions } from 'kea';
 import { projectLogic } from '../../logic/projectLogic';
 import Button from './Button';
@@ -14,6 +15,18 @@ export default function ExportPanel() {
   } = useValues(projectLogic);
 
   const { startExport, resetExport, downloadExportedVideo } = useActions(projectLogic);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Cleanup video element on unmount
+  useEffect(() => {
+    return () => {
+      if (videoRef.current) {
+        videoRef.current.pause();
+        videoRef.current.src = '';
+        videoRef.current.load();
+      }
+    };
+  }, []);
 
   const handleExport = () => {
     startExport();
@@ -69,6 +82,7 @@ export default function ExportPanel() {
             <div className="preview-container">
               <p className="preview-label">Preview:</p>
               <video
+                ref={videoRef}
                 src={exportedVideoUrl}
                 controls
                 className="preview-video"

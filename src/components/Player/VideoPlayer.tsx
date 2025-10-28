@@ -19,6 +19,18 @@ export default function VideoPlayer() {
     }
   }, [currentClip?.id]);
 
+  // Cleanup video resources on unmount
+  useEffect(() => {
+    return () => {
+      if (videoRef.current) {
+        // Pause video and clear source to free memory
+        videoRef.current.pause();
+        videoRef.current.src = '';
+        videoRef.current.load();
+      }
+    };
+  }, []);
+
   const handleTimeUpdate = (e: React.SyntheticEvent<HTMLVideoElement>) => {
     const video = e.currentTarget;
 

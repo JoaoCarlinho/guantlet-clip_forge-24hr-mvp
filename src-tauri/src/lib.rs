@@ -1,3 +1,7 @@
+// Module declarations
+mod config;
+mod cache;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
@@ -9,6 +13,11 @@ pub fn run() {
             .build(),
         )?;
       }
+
+      // TODO: Initialize cache service when Redis is fully configured
+      // let cache = cache::CacheService::new("redis://localhost:6379")?;
+      log::info!("Cache module loaded (placeholder mode)");
+
       Ok(())
     })
     .run(tauri::generate_context!())

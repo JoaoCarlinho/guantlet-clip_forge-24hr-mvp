@@ -94,6 +94,12 @@ export const projectLogic = kea([
   listeners(({ actions, values }) => ({
     startExport: async () => {
       try {
+        // Clean up previous export blob URL to prevent memory leaks
+        const prevUrl = (values as any).exportedVideoUrl;
+        if (prevUrl) {
+          URL.revokeObjectURL(prevUrl);
+        }
+
         const clips = (values as any).clips;
 
         if (!clips || clips.length === 0) {
@@ -121,6 +127,14 @@ export const projectLogic = kea([
         }
       } catch (error) {
         actions.exportFailed(error instanceof Error ? error.message : 'Export failed');
+      }
+    },
+
+    resetExport: () => {
+      // Clean up blob URL when resetting export
+      const url = (values as any).exportedVideoUrl;
+      if (url) {
+        URL.revokeObjectURL(url);
       }
     },
 

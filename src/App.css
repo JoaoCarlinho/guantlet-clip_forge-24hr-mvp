@@ -1,42 +1,80 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+/* App Container */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+/* Header */
+.app-header {
+  background-color: #1a1a1a;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid #333;
+  flex-shrink: 0;
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.app-header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #fff;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+/* Main Content */
+.app-main {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
-.card {
-  padding: 2em;
+/* Editor View */
+.editor-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
 }
 
-.read-the-docs {
-  color: #888;
+.editor-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+/* Player Section */
+.player-section {
+  flex: 2;
+  background-color: #0a0a0a;
+  border-radius: 8px;
+  border: 1px solid #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+}
+
+.player-placeholder {
+  color: #666;
+  font-size: 1.2rem;
+}
+
+/* Timeline Section */
+.timeline-section {
+  flex: 1;
+  background-color: #1a1a1a;
+  border-radius: 8px;
+  border: 1px solid #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+}
+
+.timeline-placeholder {
+  color: #666;
+  font-size: 1.2rem;
 }

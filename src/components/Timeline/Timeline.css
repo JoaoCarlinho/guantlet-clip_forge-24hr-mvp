@@ -1,0 +1,91 @@
+.timeline-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: #1a1a1a;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.timeline-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background-color: #222;
+  border-bottom: 1px solid #333;
+}
+
+.control-button {
+  background-color: #333;
+  border: 1px solid #444;
+  color: #fff;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1.2rem;
+  transition: background-color 0.2s;
+}
+
+.control-button:hover {
+  background-color: #444;
+}
+
+.timeline-time {
+  font-family: monospace;
+  font-size: 1rem;
+  color: #aaa;
+}
+
+.timeline-track {
+  flex: 1;
+  position: relative;
+  background-color: #1a1a1a;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.timeline-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #666;
+}
+
+.timeline-clips {
+  position: relative;
+  height: 60px;
+  margin: 1rem;
+}
+
+.timeline-clip {
+  position: absolute;
+  height: 50px;
+  background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
+  border: 2px solid #4a5568;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  padding: 0 0.5rem;
+  overflow: hidden;
+}
+
+.timeline-clip:hover {
+  border-color: #646cff;
+}
+
+.timeline-clip.selected {
+  border-color: #646cff;
+  box-shadow: 0 0 10px rgba(100, 108, 255, 0.5);
+}
+
+.clip-name {
+  color: #fff;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

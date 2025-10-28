@@ -1,6 +1,8 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useActions } from 'kea';
 import { timelineLogic, type Clip } from '../../logic/timelineLogic';
+import { listen } from '@tauri-apps/api/event';
+import { convertFileSrc } from '@tauri-apps/api/core';
 import './FileDropZone.css';
 
 interface FileDropZoneProps {
@@ -12,6 +14,44 @@ export default function FileDropZone({ children }: FileDropZoneProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { addClip } = useActions(timelineLogic);
   const dragCounter = useRef(0);
+
+  // Tauri file drop event listeners
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+
+    // Check if running in Tauri
+    if (window.__TAURI__) {
+      console.log('Setting up Tauri file drop listeners...');
+
+      // Listen for file drop hover events
+      listen('tauri://drag-over', () => {
+        console.log('Tauri drag-over event');
+        setIsDragging(true);
+      }).then(fn => {
+        unlisten = fn;
+      });
+
+      // Listen for file drop events
+      listen<string[]>('tauri://drop', async (event) => {
+        console.log('Tauri drop event:', event.payload);
+        setIsDragging(false);
+
+        // event.payload contains array of file paths
+        const filePaths = event.payload;
+        await processFilePaths(filePaths);
+      });
+
+      // Listen for drag leave/cancel
+      listen('tauri://drag-drop', () => {
+        console.log('Tauri drag-drop event');
+        setIsDragging(false);
+      });
+    }
+
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, []);
 
   const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault();
@@ -50,6 +90,65 @@ export default function FileDropZone({ children }: FileDropZoneProps) {
   const handleFileInput = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files ? Array.from(e.target.files) : [];
     await processFiles(files);
+  };
+
+  // Process file paths from Tauri drag-and-drop
+  const processFilePaths = async (filePaths: string[]) => {
+    console.log(`Processing ${filePaths.length} file path(s) from Tauri`);
+
+    for (const filePath of filePaths) {
+      // Check file extension
+      const extension = filePath.toLowerCase().split('.').pop();
+      if (!['mp4', 'mov'].includes(extension || '')) {
+        console.warn(`Unsupported video format: ${filePath}`);
+        continue;
+      }
+
+      try {
+        console.log(`Processing file path: ${filePath}`);
+
+        // Convert file path to a URL that can be used by the video element
+        const videoUrl = convertFileSrc(filePath);
+        const video = document.createElement('video');
+
+        // Wait for video metadata to load
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            reject(new Error('Timeout loading video metadata'));
+          }, 10000); // 10 second timeout
+
+          video.onloadedmetadata = () => {
+            clearTimeout(timeout);
+            resolve();
+          };
+          video.onerror = () => {
+            clearTimeout(timeout);
+            reject(new Error('Failed to load video metadata'));
+          };
+          video.src = videoUrl;
+        });
+
+        const duration = video.duration;
+        const fileName = filePath.split(/[/\\]/).pop() || 'video.mp4';
+
+        // Create clip object
+        const clip: Clip = {
+          id: `clip-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          name: fileName,
+          filePath: videoUrl, // Use converted Tauri URL
+          duration,
+          startTime: 0,
+          endTime: duration,
+          trimStart: 0,
+          trimEnd: duration,
+        };
+
+        addClip(clip);
+        console.log(`✓ Added clip: ${fileName} (${duration.toFixed(2)}s)`);
+      } catch (error) {
+        console.error(`✗ Error processing file path ${filePath}:`, error);
+      }
+    }
   };
 
   const processFiles = async (files: File[]) => {

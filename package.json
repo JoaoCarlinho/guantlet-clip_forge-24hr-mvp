@@ -12,6 +12,8 @@
   "author": "JoaoCarlinho <JSkeete@gmail.com>",
   "license": "MIT",
   "dependencies": {
+    "@ffmpeg/ffmpeg": "^0.12.15",
+    "@ffmpeg/util": "^0.12.2",
     "@tauri-apps/api": "^2.9.0",
     "kea": "^3.1.7",
     "kea-loaders": "^3.1.1",

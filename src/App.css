@@ -38,16 +38,23 @@
 }
 
 .editor-layout {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr 350px;
+  grid-template-rows: 2fr 1fr;
   height: 100%;
   gap: 1rem;
   padding: 1rem;
 }
 
+/* When no export sidebar */
+.editor-layout:not(:has(.export-sidebar)) {
+  grid-template-columns: 1fr;
+}
+
 /* Player Section */
 .player-section {
-  flex: 2;
+  grid-column: 1;
+  grid-row: 1;
   background-color: #0a0a0a;
   border-radius: 8px;
   border: 1px solid #333;
@@ -64,7 +71,8 @@
 
 /* Timeline Section */
 .timeline-section {
-  flex: 1;
+  grid-column: 1;
+  grid-row: 2;
   background-color: #1a1a1a;
   border-radius: 8px;
   border: 1px solid #333;
@@ -77,4 +85,15 @@
 .timeline-placeholder {
   color: #666;
   font-size: 1.2rem;
+}
+
+/* Export Sidebar */
+.export-sidebar {
+  grid-column: 2;
+  grid-row: 1 / -1;
+  background-color: #1a1a1a;
+  border-radius: 8px;
+  border: 1px solid #333;
+  overflow-y: auto;
+  overflow-x: hidden;
 }

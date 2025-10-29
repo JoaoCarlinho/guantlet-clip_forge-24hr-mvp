@@ -314,11 +314,101 @@ async function exportMultipleClips(options: ExportOptions): Promise<ExportResult
 }
 
 /**
+ * Check if we're running in Tauri desktop environment
+ */
+function isTauri(): boolean {
+  return typeof window !== 'undefined' && '__TAURI__' in window;
+}
+
+/**
+ * Export video using Tauri's native FFmpeg command (desktop only)
+ */
+async function exportVideoNative(options: ExportOptions): Promise<ExportResult> {
+  const { clips, settings, onProgress, onLog } = options;
+
+  try {
+    onLog?.('Using native FFmpeg export...');
+
+    // Import Tauri API
+    const { invoke } = await import('@tauri-apps/api/core');
+    const { save } = await import('@tauri-apps/plugin-dialog');
+
+    // Show save dialog to get output path
+    const outputPath = await save({
+      defaultPath: `export-${Date.now()}.mp4`,
+      filters: [{
+        name: 'Video',
+        extensions: ['mp4']
+      }]
+    });
+
+    if (!outputPath) {
+      return {
+        success: false,
+        error: 'Export cancelled by user',
+      };
+    }
+
+    onLog?.('Preparing clips for export...');
+
+    // Convert clips to format expected by Rust backend
+    const clipSegments = clips.map(clip => ({
+      file_path: clip.filePath,
+      source_start: clip.sourceStart || 0,
+      source_end: clip.sourceEnd || clip.duration,
+    }));
+
+    const quality = settings?.quality || 'medium';
+
+    onProgress?.(10);
+    onLog?.(`Exporting ${clips.length} clip(s) to ${outputPath}...`);
+
+    // Call Tauri backend
+    const result = await invoke<string>('export_video', {
+      options: {
+        clips: clipSegments,
+        output_path: outputPath,
+        quality: quality,
+      }
+    });
+
+    onProgress?.(90);
+    onLog?.('Reading exported file...');
+
+    // Read the exported file
+    const { readBinaryFile } = await import('@tauri-apps/plugin-fs');
+    const fileData = await readBinaryFile(outputPath);
+
+    // Create blob from file
+    const blob = new Blob([fileData], { type: 'video/mp4' });
+    const url = URL.createObjectURL(blob);
+
+    onProgress?.(100);
+    onLog?.('Export complete!');
+
+    return {
+      success: true,
+      blob,
+      url,
+    };
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    onLog?.(`Export failed: ${errorMessage}`);
+
+    return {
+      success: false,
+      error: errorMessage,
+    };
+  }
+}
+
+/**
  * Export video clips with trim points applied
- * Routes to single or multi-clip export based on clip count
+ * Routes to native FFmpeg (desktop) or FFmpeg.wasm (browser) based on environment
  */
 export async function exportVideo(options: ExportOptions): Promise<ExportResult> {
-  const { clips } = options;
+  const { clips, onLog } = options;
 
   if (clips.length === 0) {
     return {
@@ -326,6 +416,15 @@ export async function exportVideo(options: ExportOptions): Promise<ExportResult>
       error: 'No clips to export',
     };
   }
+
+  // Check if running in Tauri (desktop app)
+  if (isTauri()) {
+    onLog?.('🖥️ Desktop mode: Using native FFmpeg');
+    return exportVideoNative(options);
+  }
+
+  // Browser mode: Use FFmpeg.wasm
+  onLog?.('🌐 Browser mode: Using FFmpeg.wasm');
 
   if (clips.length === 1) {
     // Use optimized single-clip export

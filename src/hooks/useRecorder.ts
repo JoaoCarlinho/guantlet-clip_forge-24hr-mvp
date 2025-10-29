@@ -44,15 +44,16 @@ const isGetDisplayMediaAvailable = (): boolean => {
 
 /**
  * Determine which recording mode to use:
- * - In Tauri without Media Devices API: use native recording
- * - In browser with Media Devices API: use browser recording
+ * - In Tauri: ALWAYS use native recording (Media API not reliable in WebView)
+ * - In browser: use Media Devices API
  */
 const shouldUseNativeRecording = (): boolean => {
   const inTauri = isTauri();
   const hasMediaAPI = isGetDisplayMediaAvailable();
 
-  // Use native recording if we're in Tauri AND don't have the Media Devices API
-  const useNative = inTauri && !hasMediaAPI;
+  // ALWAYS use native recording in Tauri, regardless of Media API availability
+  // The Media API may appear to exist but won't work reliably in Tauri's WebView
+  const useNative = inTauri;
 
   console.log('🔍 Recording mode detection:');
   console.log('  - Running in Tauri:', inTauri);
@@ -63,9 +64,11 @@ const shouldUseNativeRecording = (): boolean => {
 };
 
 export const useRecorder = () => {
+  // Always instantiate both recorders
   const nativeRecorder = useNativeRecorder();
 
   // Determine which recording backend to use
+  // Check this on every render to ensure Tauri has initialized
   const useNative = shouldUseNativeRecording();
 
   // If we should use native recording, return the native recorder immediately

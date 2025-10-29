@@ -3,12 +3,16 @@ import { kea, path, actions, reducers, selectors, listeners } from 'kea';
 export interface Clip {
   id: string;
   name: string;
-  filePath: string;
-  duration: number;
-  startTime: number;
-  endTime: number;
-  trimStart: number; // in/out points for trimming
-  trimEnd: number;
+  filePath: string; // Converted URL for video player (blob: or asset: protocol)
+  originalFilePath?: string; // Original file system path (for FFmpeg export)
+  duration: number; // Duration of the clip on the timeline
+  startTime: number; // Position on timeline
+  endTime: number; // Position on timeline
+  trimStart: number; // IN point - time relative to clip start (for UI trim markers)
+  trimEnd: number; // OUT point - time relative to clip start (for UI trim markers)
+  sourceDuration: number; // Original duration of the source video file
+  sourceStart: number; // Where in the source file this clip starts playing from
+  sourceEnd: number; // Where in the source file this clip ends playing at
 }
 
 export interface TimelineState {
@@ -181,10 +185,18 @@ export const timelineLogic = kea([
       const newStartTime = clip.startTime; // Keep same position on timeline
       const newEndTime = newStartTime + newDuration;
 
-      // Update the clip with new duration and reset trim points
+      // Update source boundaries to reflect what was kept
+      // The new sourceStart is where the old trimStart was pointing
+      // The new sourceEnd is where the old trimEnd was pointing
+      const newSourceStart = clip.sourceStart + clip.trimStart;
+      const newSourceEnd = clip.sourceStart + clip.trimEnd;
+
+      // Reset trim markers to span the entire clip (no visible trim regions)
       actions.updateClip(clipId, {
         duration: newDuration,
         endTime: newEndTime,
+        sourceStart: newSourceStart,
+        sourceEnd: newSourceEnd,
         trimStart: 0,
         trimEnd: newDuration,
       });
@@ -239,7 +251,11 @@ export const timelineLogic = kea([
       (clips: Clip[]) => {
         const hasTrims: Record<string, boolean> = {};
         clips.forEach((clip: Clip) => {
-          hasTrims[clip.id] = clip.trimStart > 0 || clip.trimEnd < clip.duration;
+          // Use a small epsilon for floating point comparison
+          const EPSILON = 0.001;
+          const hasTrimStart = clip.trimStart > EPSILON;
+          const hasTrimEnd = clip.trimEnd < (clip.duration - EPSILON);
+          hasTrims[clip.id] = hasTrimStart || hasTrimEnd;
         });
         return hasTrims;
       },

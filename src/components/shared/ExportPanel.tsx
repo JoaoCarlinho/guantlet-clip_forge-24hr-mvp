@@ -1,8 +1,66 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useValues, useActions } from 'kea';
-import { projectLogic } from '../../logic/projectLogic';
+import { projectLogic, ExportQuality } from '../../logic/projectLogic';
+import { timelineLogic, type Clip } from '../../logic/timelineLogic';
 import Button from './Button';
 import './ExportPanel.css';
+
+// Helper function to format duration
+function formatDuration(seconds: number): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+// Export Preview Modal Component
+interface ExportPreviewModalProps {
+  clips: Clip[];
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+function ExportPreviewModal({ clips, onConfirm, onCancel }: ExportPreviewModalProps) {
+  const totalDuration = clips.reduce(
+    (sum, clip) => sum + (clip.trimEnd - clip.trimStart),
+    0
+  );
+
+  return (
+    <div className="modal-overlay" onClick={onCancel}>
+      <div className="export-preview-modal" onClick={(e) => e.stopPropagation()}>
+        <h2>Confirm Export</h2>
+
+        <div className="preview-summary">
+          <p><strong>Clips:</strong> {clips.length}</p>
+          <p><strong>Total Duration:</strong> {formatDuration(totalDuration)}</p>
+        </div>
+
+        <div className="preview-clip-list">
+          <h3>Clip Order:</h3>
+          <ol>
+            {clips.map((clip) => (
+              <li key={clip.id}>
+                <span className="clip-name">{clip.name}</span>
+                <span className="clip-duration">
+                  ({formatDuration(clip.trimEnd - clip.trimStart)})
+                </span>
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        <div className="modal-actions">
+          <Button onClick={onCancel} variant="secondary">
+            Cancel
+          </Button>
+          <Button onClick={onConfirm} variant="primary">
+            Start Export
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function ExportPanel() {
   const {
@@ -12,10 +70,14 @@ export default function ExportPanel() {
     exportSuccess,
     exportLog,
     exportedVideoUrl,
+    exportSettings,
   } = useValues(projectLogic);
 
-  const { startExport, resetExport, downloadExportedVideo } = useActions(projectLogic);
+  const { clips } = useValues(timelineLogic);
+
+  const { startExport, resetExport, downloadExportedVideo, setExportQuality } = useActions(projectLogic);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   // Cleanup video element on unmount
   useEffect(() => {
@@ -44,12 +106,44 @@ export default function ExportPanel() {
     <div className="export-panel">
       <div className="export-header">
         <h3>Export Video</h3>
-        {!isExporting && !exportSuccess && !exportError && (
-          <Button onClick={handleExport} variant="primary">
-            Export Clips
-          </Button>
-        )}
       </div>
+
+      {!isExporting && !exportSuccess && !exportError && (
+        <>
+          <div className="export-settings">
+            <label htmlFor="quality-select">Export Quality:</label>
+            <select
+              id="quality-select"
+              value={exportSettings.quality}
+              onChange={(e) => setExportQuality(e.target.value as ExportQuality)}
+              disabled={isExporting}
+            >
+              <option value={ExportQuality.LOW}>Low (Fast, smaller file)</option>
+              <option value={ExportQuality.MEDIUM}>Medium (Balanced)</option>
+              <option value={ExportQuality.HIGH}>High (Slow, best quality)</option>
+            </select>
+          </div>
+          <Button
+            onClick={() => setShowPreview(true)}
+            variant="primary"
+            className="export-button"
+            disabled={clips.length === 0}
+          >
+            Export {clips.length} Clip{clips.length !== 1 ? 's' : ''}
+          </Button>
+        </>
+      )}
+
+      {showPreview && (
+        <ExportPreviewModal
+          clips={clips}
+          onConfirm={() => {
+            setShowPreview(false);
+            handleExport();
+          }}
+          onCancel={() => setShowPreview(false)}
+        />
+      )}
 
       {isExporting && (
         <div className="export-progress-container">
@@ -72,7 +166,7 @@ export default function ExportPanel() {
           <p className="success-message">Export completed successfully!</p>
           <div className="export-actions">
             <Button onClick={handleDownload} variant="primary">
-              Download Video
+              Open File Location
             </Button>
             <Button onClick={handleReset} variant="secondary">
               Export Another
@@ -80,13 +174,10 @@ export default function ExportPanel() {
           </div>
           {exportedVideoUrl && (
             <div className="preview-container">
-              <p className="preview-label">Preview:</p>
-              <video
-                ref={videoRef}
-                src={exportedVideoUrl}
-                controls
-                className="preview-video"
-              />
+              <p className="preview-label">File saved to:</p>
+              <p style={{ fontSize: '0.9em', color: '#888', wordBreak: 'break-all' }}>
+                {exportedVideoUrl}
+              </p>
             </div>
           )}
         </div>

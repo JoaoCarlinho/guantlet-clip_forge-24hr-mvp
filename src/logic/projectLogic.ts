@@ -1,6 +1,17 @@
 import { kea, path, actions, reducers, listeners, connect } from 'kea';
 import { timelineLogic } from './timelineLogic';
-import { exportVideo, downloadVideo } from '../utils/videoExport';
+import { exportVideoNative } from '../utils/tauriVideoExport';
+
+export enum ExportQuality {
+  LOW = 'low',      // CRF 28, preset fast
+  MEDIUM = 'medium', // CRF 23, preset medium (default)
+  HIGH = 'high',     // CRF 18, preset slow
+}
+
+export interface ExportSettings {
+  quality: ExportQuality;
+  outputFormat: 'mp4'; // Future: add 'mov', 'webm'
+}
 
 export interface ProjectState {
   projectName: string;
@@ -10,6 +21,8 @@ export interface ProjectState {
   exportSuccess: boolean;
   exportLog: string[];
   exportedVideoUrl: string | null;
+  exportAbortController: AbortController | null;
+  exportSettings: ExportSettings;
 }
 
 export const projectLogic = kea([
@@ -28,6 +41,8 @@ export const projectLogic = kea([
     exportFailed: (error) => ({ error }),
     resetExport: true,
     downloadExportedVideo: true,
+    cancelExport: true,
+    setExportQuality: (quality) => ({ quality }),
   }),
 
   reducers({
@@ -89,11 +104,34 @@ export const projectLogic = kea([
         startExport: () => null,
       },
     ],
+    exportAbortController: [
+      null as AbortController | null,
+      {
+        startExport: () => new AbortController(),
+        exportComplete: () => null,
+        exportFailed: () => null,
+        cancelExport: (controller) => {
+          controller?.abort();
+          return null;
+        },
+      },
+    ],
+    exportSettings: [
+      { quality: ExportQuality.MEDIUM, outputFormat: 'mp4' } as ExportSettings,
+      {
+        setExportQuality: (state, { quality }) => ({
+          ...state,
+          quality,
+        }),
+      },
+    ],
   }),
 
   listeners(({ actions, values }) => ({
     startExport: async () => {
       try {
+        console.log('🎬 Export started');
+
         // Clean up previous export blob URL to prevent memory leaks
         const prevUrl = (values as any).exportedVideoUrl;
         if (prevUrl) {
@@ -101,32 +139,46 @@ export const projectLogic = kea([
         }
 
         const clips = (values as any).clips;
+        console.log('📦 Clips to export:', clips);
 
         if (!clips || clips.length === 0) {
+          console.error('❌ No clips to export');
           actions.exportFailed('No clips to export');
           return;
         }
 
         actions.addExportLog('Starting export...');
+        console.log('🚀 Calling exportVideoNative...');
 
-        const result = await exportVideo({
+        const result = await exportVideoNative({
           clips,
+          settings: (values as any).exportSettings,
           onProgress: (progress) => {
+            console.log(`📊 Progress: ${progress}%`);
             actions.updateExportProgress(progress);
           },
           onLog: (message) => {
+            console.log(`📝 Log: ${message}`);
             actions.addExportLog(message);
           },
         });
 
-        if (result.success && result.url) {
-          actions.addExportLog('Export completed successfully!');
-          actions.exportComplete(result.url);
+        console.log('✅ Export result:', result);
+
+        if (result.success && result.filePath) {
+          actions.addExportLog(`Export completed successfully! Saved to: ${result.filePath}`);
+          // For native export, we don't need a URL since file is already saved
+          actions.exportComplete(result.filePath);
         } else {
+          console.error('❌ Export failed:', result.error);
           actions.exportFailed(result.error || 'Unknown error occurred');
         }
       } catch (error) {
-        actions.exportFailed(error instanceof Error ? error.message : 'Export failed');
+        console.error('❌ Export error:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Export failed';
+        const errorStack = error instanceof Error ? error.stack : '';
+        console.error('Error stack:', errorStack);
+        actions.exportFailed(errorMessage);
       }
     },
 
@@ -138,22 +190,27 @@ export const projectLogic = kea([
       }
     },
 
-    downloadExportedVideo: async (_, breakpoint) => {
-      await breakpoint(100);
+    downloadExportedVideo: async () => {
       const { exportedVideoUrl } = values;
 
       if (exportedVideoUrl) {
-        // Fetch the blob from the URL
-        const response = await fetch(exportedVideoUrl);
-        const blob = await response.blob();
-
-        // Generate filename with timestamp
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-        const filename = `clipforge-export-${timestamp}.mp4`;
-
-        downloadVideo(blob, filename);
-        actions.addExportLog(`Downloaded as: ${filename}`);
+        // For native Tauri export, the file is already saved
+        // Just open the folder containing the file
+        try {
+          const { open } = await import('@tauri-apps/plugin-shell');
+          // Open the file location in the system file browser
+          await open(exportedVideoUrl);
+          actions.addExportLog('Opened file location');
+        } catch (error) {
+          console.error('Failed to open file location:', error);
+          actions.addExportLog(`File saved to: ${exportedVideoUrl}`);
+        }
       }
+    },
+
+    cancelExport: () => {
+      actions.addExportLog('Export cancelled by user');
+      actions.exportFailed('Export cancelled');
     },
   })),
 ]);

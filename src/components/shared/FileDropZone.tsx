@@ -173,12 +173,16 @@ export default function FileDropZone({ children }: FileDropZoneProps) {
         const clip: Clip = {
           id: `clip-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           name: fileName,
-          filePath: videoUrl, // Use converted Tauri URL
+          filePath: videoUrl, // Use converted Tauri URL for video player
+          originalFilePath: filePath, // Store original path for FFmpeg export
           duration,
           startTime: 0,
           endTime: duration,
           trimStart: 0,
           trimEnd: duration,
+          sourceDuration: duration,
+          sourceStart: 0,
+          sourceEnd: duration,
         };
 
         addClip(clip);
@@ -244,6 +248,9 @@ export default function FileDropZone({ children }: FileDropZoneProps) {
           endTime: duration,
           trimStart: 0,
           trimEnd: duration,
+          sourceDuration: duration,
+          sourceStart: 0,
+          sourceEnd: duration,
         };
 
         addClip(clip);

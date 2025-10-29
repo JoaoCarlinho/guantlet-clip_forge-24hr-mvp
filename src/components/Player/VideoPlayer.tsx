@@ -44,8 +44,9 @@ export default function VideoPlayer() {
       // Wait for metadata before setting currentTime to avoid black screen
       const setInitialTime = () => {
         if (videoRef.current && videoRef.current.readyState >= 1) {
-          videoRef.current.currentTime = currentClip.trimStart;
-          console.log('⏱️ Set initial currentTime to trimStart:', currentClip.trimStart);
+          // Use sourceStart to set the initial playback position
+          videoRef.current.currentTime = currentClip.sourceStart;
+          console.log('⏱️ Set initial currentTime to sourceStart:', currentClip.sourceStart);
         }
       };
 
@@ -203,15 +204,15 @@ export default function VideoPlayer() {
     const video = e.currentTarget;
 
     if (currentClip) {
-      // Stop playback if we've reached the trim end point
-      if (video.currentTime >= currentClip.trimEnd) {
-        video.currentTime = currentClip.trimStart;
+      // Stop playback if we've reached the source end point
+      if (video.currentTime >= currentClip.sourceEnd) {
+        video.currentTime = currentClip.sourceStart;
         pause();
       }
 
-      // Don't allow seeking before trim start
-      if (video.currentTime < currentClip.trimStart) {
-        video.currentTime = currentClip.trimStart;
+      // Don't allow seeking before source start
+      if (video.currentTime < currentClip.sourceStart) {
+        video.currentTime = currentClip.sourceStart;
       }
 
       setCurrentTime(video.currentTime);
@@ -220,10 +221,10 @@ export default function VideoPlayer() {
 
   const handlePlay = () => {
     if (videoRef.current && currentClip) {
-      // Start from trim point if not already in range
-      if (videoRef.current.currentTime < currentClip.trimStart ||
-          videoRef.current.currentTime >= currentClip.trimEnd) {
-        videoRef.current.currentTime = currentClip.trimStart;
+      // Start from source start if not already in range
+      if (videoRef.current.currentTime < currentClip.sourceStart ||
+          videoRef.current.currentTime >= currentClip.sourceEnd) {
+        videoRef.current.currentTime = currentClip.sourceStart;
       }
       play();
     }
@@ -231,11 +232,11 @@ export default function VideoPlayer() {
 
   const handleSeeked = () => {
     if (videoRef.current && currentClip) {
-      // Constrain seeking to trim range
-      if (videoRef.current.currentTime < currentClip.trimStart) {
-        videoRef.current.currentTime = currentClip.trimStart;
-      } else if (videoRef.current.currentTime > currentClip.trimEnd) {
-        videoRef.current.currentTime = currentClip.trimEnd;
+      // Constrain seeking to source range
+      if (videoRef.current.currentTime < currentClip.sourceStart) {
+        videoRef.current.currentTime = currentClip.sourceStart;
+      } else if (videoRef.current.currentTime > currentClip.sourceEnd) {
+        videoRef.current.currentTime = currentClip.sourceEnd;
       }
     }
   };

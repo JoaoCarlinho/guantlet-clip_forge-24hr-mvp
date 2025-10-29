@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "enables the default permissions including file system access for drag-and-drop",
+  "description": "enables the default permissions including file system access for drag-and-drop and export",
   "windows": [
     "main"
   ],
@@ -11,6 +11,15 @@
     "core:event:allow-emit",
     "core:path:allow-resolve",
     "core:path:allow-basename",
-    "core:path:allow-dirname"
+    "core:path:allow-dirname",
+    "core:path:allow-join",
+    "core:path:allow-resolve-directory",
+    "dialog:allow-save",
+    "fs:allow-write-file",
+    "fs:allow-write-text-file",
+    "fs:allow-remove",
+    "fs:scope-temp",
+    "fs:allow-temp-write",
+    "shell:allow-open"
   ]
 }

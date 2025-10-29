@@ -11,6 +11,11 @@ export interface RecordingState {
 }
 
 export const recordingLogic = kea([
+  // Add a stable path to prevent logic re-creation on every render
+  {
+    path: ['recording'],
+  },
+
   actions({
     startRecording: (config) => ({ config }),
     stopRecording: true,

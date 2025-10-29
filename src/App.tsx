@@ -5,6 +5,7 @@ import { timelineLogic } from "./logic/timelineLogic";
 import Timeline from "./components/Timeline/Timeline";
 import VideoPlayer from "./components/Player/VideoPlayer";
 import ExportPanel from "./components/shared/ExportPanel";
+import RecordingControls from "./components/Recording/RecordingControls";
 import "./App.css";
 
 function App() {
@@ -63,6 +64,11 @@ function EditorView() {
   return (
     <div className="editor-view">
       <div className="editor-layout">
+        {/* Recording Controls - left panel */}
+        <aside className="recording-sidebar">
+          <RecordingControls />
+        </aside>
+
         {/* Player area - top section */}
         <section className="player-section">
           <VideoPlayer />

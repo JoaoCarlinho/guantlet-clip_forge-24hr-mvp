@@ -1,6 +1,7 @@
 // Module declarations
 mod config;
 mod ffmpeg;
+mod recorder;
 // mod cache;  // Disabled - placeholder implementation not needed for MVP
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -9,7 +10,14 @@ pub fn run() {
     .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_fs::init())
     .plugin(tauri_plugin_shell::init())
-    .invoke_handler(tauri::generate_handler![ffmpeg::export_video])
+    .manage(recorder::RecordingState::new())
+    .invoke_handler(tauri::generate_handler![
+      ffmpeg::export_video,
+      recorder::start_screen_record,
+      recorder::stop_screen_record,
+      recorder::get_recording_status,
+      recorder::save_recording
+    ])
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(

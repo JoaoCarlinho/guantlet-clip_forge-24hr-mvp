@@ -43,7 +43,7 @@
 
 .editor-layout {
   display: grid;
-  grid-template-columns: 1fr 350px;
+  grid-template-columns: 300px 1fr 350px;
   grid-template-rows: 2fr 1fr;
   height: 100%;
   width: 100vw;
@@ -57,12 +57,22 @@
 
 /* When no export sidebar */
 .editor-layout:not(:has(.export-sidebar)) {
-  grid-template-columns: 1fr;
+  grid-template-columns: 300px 1fr;
+}
+
+/* Recording Sidebar */
+.recording-sidebar {
+  grid-column: 1;
+  grid-row: 1 / -1;
+  background-color: #1a1a1a;
+  border-radius: 8px;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* Player Section */
 .player-section {
-  grid-column: 1;
+  grid-column: 2;
   grid-row: 1;
   background-color: #0a0a0a;
   border-radius: 8px;
@@ -81,7 +91,7 @@
 
 /* Timeline Section */
 .timeline-section {
-  grid-column: 1;
+  grid-column: 2;
   grid-row: 2;
   background-color: #1a1a1a;
   border-radius: 8px;
@@ -100,7 +110,7 @@
 
 /* Export Sidebar */
 .export-sidebar {
-  grid-column: 2;
+  grid-column: 3;
   grid-row: 1 / -1;
   background-color: #1a1a1a;
   border-radius: 8px;

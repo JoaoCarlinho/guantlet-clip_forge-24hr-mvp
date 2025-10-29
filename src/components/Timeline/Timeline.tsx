@@ -12,6 +12,7 @@ export default function Timeline() {
     currentTime,
     isPlaying,
     selectedClipId,
+    activeClipId,
     totalDuration,
     zoomLevel,
     pendingDeleteClipId,
@@ -274,6 +275,7 @@ export default function Timeline() {
                   key={clip.id}
                   clip={clip}
                   isSelected={selectedClipId === clip.id}
+                  isActive={activeClipId === clip.id}
                   pixelsPerSecond={pixelsPerSecond}
                   onSelect={() => selectClip(clip.id)}
                 />

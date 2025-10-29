@@ -5,12 +5,24 @@ import FileDropZone from '../shared/FileDropZone';
 import './VideoPlayer.css';
 
 export default function VideoPlayer() {
-  const { clips, selectedClip, isPlaying, effectivePreviewTime, activeTrimClipId, activeTrimType } = useValues(timelineLogic);
-  const { setCurrentTime, pause, play } = useActions(timelineLogic);
+  const {
+    clips,
+    selectedClip,
+    activeClip,
+    isPlaying,
+    effectivePreviewTime,
+    activeTrimClipId,
+    activeTrimType,
+    currentTime,
+    nextClip,
+  } = useValues(timelineLogic);
+  const { setCurrentTime, pause, play, setActiveClip } = useActions(timelineLogic);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Use selected clip if available, otherwise use the first clip
-  const currentClip = selectedClip || (clips.length > 0 ? clips[0] : null);
+  // Use activeClip when playing, selectedClip for preview, fallback to first clip
+  const currentClip = (isPlaying && activeClip)
+    ? activeClip
+    : (selectedClip || (clips.length > 0 ? clips[0] : null));
 
   // Debug logging for video player render
   console.log('🎬 VideoPlayer render:', {
@@ -37,22 +49,43 @@ export default function VideoPlayer() {
       console.log('📹 Video source:', currentClip.filePath);
       console.log('📹 Video element exists:', !!videoRef.current);
 
-      // Force video to load the new source
-      videoRef.current.src = currentClip.filePath;
-      videoRef.current.load();
+      // Check if source actually needs to change (avoid unnecessary reloads)
+      const needsSourceChange = videoRef.current.src !== currentClip.filePath;
+
+      if (needsSourceChange) {
+        console.log('🔄 Loading new video source');
+        // Force video to load the new source
+        videoRef.current.src = currentClip.filePath;
+        videoRef.current.load();
+      }
 
       // Wait for metadata before setting currentTime to avoid black screen
       const setInitialTime = () => {
         if (videoRef.current && videoRef.current.readyState >= 1) {
-          // Use sourceStart to set the initial playback position
-          videoRef.current.currentTime = currentClip.sourceStart;
-          console.log('⏱️ Set initial currentTime to sourceStart:', currentClip.sourceStart);
+          // Calculate correct position in source video based on global timeline position
+          const globalTime = currentTime;
+          const relativeTime = globalTime - currentClip.startTime;
+          const sourceTime = currentClip.sourceStart + relativeTime;
+
+          // Clamp to valid range
+          videoRef.current.currentTime = Math.max(
+            currentClip.sourceStart,
+            Math.min(sourceTime, currentClip.sourceEnd)
+          );
+
+          console.log('⏱️ Set video time:', {
+            globalTime,
+            relativeTime,
+            sourceTime: videoRef.current.currentTime,
+            clipStart: currentClip.startTime,
+            sourceStart: currentClip.sourceStart,
+          });
         }
       };
 
-      if (videoRef.current.readyState >= 1) {
+      if (videoRef.current.readyState >= 1 && !needsSourceChange) {
         setInitialTime();
-      } else {
+      } else if (needsSourceChange) {
         videoRef.current.addEventListener('loadedmetadata', setInitialTime, { once: true });
       }
 
@@ -135,7 +168,7 @@ export default function VideoPlayer() {
         video.removeEventListener('error', handleError);
       };
     }
-  }, [currentClip?.id, currentClip?.filePath]);
+  }, [currentClip?.id, currentClip?.filePath, currentTime]);
 
   // Sync isPlaying state with actual video playback
   useEffect(() => {
@@ -145,12 +178,18 @@ export default function VideoPlayer() {
     console.log('🎮 isPlaying state changed:', isPlaying);
 
     if (isPlaying) {
+      // Ensure video is in correct time range before playing
+      if (video.currentTime < currentClip.sourceStart ||
+          video.currentTime >= currentClip.sourceEnd) {
+        video.currentTime = currentClip.sourceStart;
+      }
+
       // Play the video
       const playPromise = video.play();
       if (playPromise !== undefined) {
         playPromise
           .then(() => {
-            console.log('✅ Video started playing from state change');
+            console.log('✅ Video started playing');
           })
           .catch((error) => {
             console.error('❌ Failed to play video:', error);
@@ -165,7 +204,7 @@ export default function VideoPlayer() {
         console.log('⏸️ Video paused from state change');
       }
     }
-  }, [isPlaying, currentClip]);
+  }, [isPlaying, currentClip?.id]);
 
   // Update video preview during trim adjustment
   useEffect(() => {
@@ -203,19 +242,50 @@ export default function VideoPlayer() {
   const handleTimeUpdate = (e: React.SyntheticEvent<HTMLVideoElement>) => {
     const video = e.currentTarget;
 
-    if (currentClip) {
-      // Stop playback if we've reached the source end point
-      if (video.currentTime >= currentClip.sourceEnd) {
-        video.currentTime = currentClip.sourceStart;
+    if (!currentClip || !isPlaying) return;
+
+    // Calculate current global timeline position
+    const relativeTimeInClip = video.currentTime - currentClip.sourceStart;
+    const globalTime = currentClip.startTime + relativeTimeInClip;
+
+    // Use a small threshold to prevent overshooting on very short clips
+    const END_THRESHOLD = 0.05; // 50ms threshold
+
+    // Check if we've reached the end of current clip (trimEnd in source video)
+    if (video.currentTime >= (currentClip.sourceEnd - END_THRESHOLD)) {
+      console.log('🎬 Reached end of clip:', currentClip.name);
+
+      // Check if there's a next clip
+      const nextClipToPlay = nextClip;
+
+      if (nextClipToPlay) {
+        console.log('➡️ Transitioning to next clip:', nextClipToPlay.name);
+
+        // Update active clip
+        setActiveClip(nextClipToPlay.id);
+
+        // Update global timeline position to start of next clip
+        setCurrentTime(nextClipToPlay.startTime);
+
+        // The video source will change via useEffect, which will:
+        // 1. Load the new video file (if different)
+        // 2. Seek to sourceStart of new clip
+        // 3. Continue playing automatically (isPlaying is still true)
+      } else {
+        // No more clips - stop playback
+        console.log('⏹️ Reached end of timeline');
+        setCurrentTime(globalTime);
         pause();
+        return;
       }
+    } else {
+      // Normal playback - update global timeline position
+      setCurrentTime(globalTime);
+    }
 
-      // Don't allow seeking before source start
-      if (video.currentTime < currentClip.sourceStart) {
-        video.currentTime = currentClip.sourceStart;
-      }
-
-      setCurrentTime(video.currentTime);
+    // Don't allow seeking before source start
+    if (video.currentTime < currentClip.sourceStart) {
+      video.currentTime = currentClip.sourceStart;
     }
   };
 

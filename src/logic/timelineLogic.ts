@@ -20,6 +20,7 @@ export interface TimelineState {
   currentTime: number;
   isPlaying: boolean;
   selectedClipId: string | null;
+  activeClipId: string | null;  // Currently playing clip (different from selectedClipId)
   zoomLevel: number;        // pixels per second
   scrollPosition: number;   // for maintaining scroll position during zoom
   // Trim preview state
@@ -36,6 +37,7 @@ export const timelineLogic = kea([
     removeClip: (clipId) => ({ clipId }),
     updateClip: (clipId, updates) => ({ clipId, updates }),
     setCurrentTime: (time) => ({ time }),
+    setActiveClip: (clipId) => ({ clipId }),  // Set currently playing clip
     play: true,
     pause: true,
     togglePlay: true,
@@ -118,6 +120,15 @@ export const timelineLogic = kea([
         clearTimeline: () => null,
       },
     ],
+    activeClipId: [
+      null as string | null,
+      {
+        setActiveClip: (_, { clipId }) => clipId,
+        removeClip: (state, { clipId }) => (state === clipId ? null : state),
+        clearTimeline: () => null,
+        pause: () => null,  // Clear active clip when paused
+      },
+    ],
     zoomLevel: [
       50 as number,  // default 50 pixels per second
       {
@@ -176,6 +187,46 @@ export const timelineLogic = kea([
   }),
 
   listeners(({ actions, values }) => ({
+    // Set active clip when play is initiated
+    play: () => {
+      const { clips, currentTime, clipAtTime, totalDuration } = values;
+
+      if (clips.length === 0) return;
+
+      // Determine which clip should be playing
+      let clipToPlay: Clip | null = null;
+
+      // If currentTime is at or past the end, start from beginning
+      if (currentTime >= totalDuration) {
+        clipToPlay = clips[0];
+        actions.setCurrentTime(clips[0].startTime);
+      } else {
+        // Find clip at current position
+        clipToPlay = clipAtTime(currentTime);
+
+        // If no clip found (e.g., at very end), start from first clip
+        if (!clipToPlay) {
+          clipToPlay = clips[0];
+          actions.setCurrentTime(clips[0].startTime);
+        }
+      }
+
+      if (clipToPlay) {
+        actions.setActiveClip(clipToPlay.id);
+        console.log('🎬 Starting playback from clip:', clipToPlay.name);
+      }
+    },
+
+    // Handle clip removal - stop playback if active clip is removed
+    removeClip: ({ clipId }) => {
+      const { activeClipId, isPlaying } = values;
+
+      if (isPlaying && activeClipId === clipId) {
+        console.log('⏹️ Active clip removed, stopping playback');
+        actions.pause();
+      }
+    },
+
     confirmDeleteOutsideMarkers: ({ clipId }) => {
       const clip = values.clips.find((c: Clip) => c.id === clipId);
       if (!clip) return;
@@ -223,6 +274,30 @@ export const timelineLogic = kea([
     selectedClip: [
       (s) => [s.clips, s.selectedClipId],
       (clips: Clip[], selectedClipId: string | null) => clips.find((c: Clip) => c.id === selectedClipId) || null,
+    ],
+    // Get clip that is currently playing
+    activeClip: [
+      (s) => [s.clips, s.activeClipId],
+      (clips: Clip[], activeClipId: string | null) => clips.find((c: Clip) => c.id === activeClipId) || null,
+    ],
+    // Calculate which clip contains the given timeline position
+    clipAtTime: [
+      (s) => [s.clips],
+      (clips: Clip[]) => (time: number): Clip | null => {
+        return clips.find(
+          (clip: Clip) => time >= clip.startTime && time < clip.endTime
+        ) || null;
+      },
+    ],
+    // Get the next clip in timeline order
+    nextClip: [
+      (s) => [s.clips, s.activeClipId],
+      (clips: Clip[], activeClipId: string | null): Clip | null => {
+        if (!activeClipId) return null;
+        const currentIndex = clips.findIndex((c: Clip) => c.id === activeClipId);
+        if (currentIndex === -1 || currentIndex === clips.length - 1) return null;
+        return clips[currentIndex + 1];
+      },
     ],
     totalDuration: [
       (s) => [s.clips],

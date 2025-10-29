@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useActions, useValues } from 'kea';
 import { recordingLogic } from '../../logic/recordingLogic';
 import { useRecorder } from '../../hooks/useRecorder';
+import { convertWebMToMP4, isFFmpegSupported } from '../../utils/videoConverter';
 import Button from '../shared/Button';
 import './RecordingControls.css';
 
@@ -22,6 +23,9 @@ const RecordingControls = ({ className = '' }: RecordingControlsProps) => {
     includeAudio: true,
   });
 
+  const [isConverting, setIsConverting] = useState(false);
+  const [conversionProgress, setConversionProgress] = useState(0);
+
   const { isRecording, isPaused, recordingTime, error } = recorderState;
 
   const handleStartRecording = async () => {
@@ -40,23 +44,48 @@ const RecordingControls = ({ className = '' }: RecordingControlsProps) => {
       const clip = await recorder.stopRecording();
       console.log('📹 Stop recording returned:', clip);
       if (clip) {
-        console.log('💾 Saving clip to Kea logic and timeline');
+        // Determine if we're in browser or desktop mode
+        const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
+        const timestamp = new Date().toISOString().replace(/:/g, '-').slice(0, -5);
+
+        console.log('🖥️ Environment:', isTauri ? 'Desktop (Tauri)' : 'Browser');
+
+        // Desktop app: Native recording provides MP4 directly
+        // Browser: Media API provides WebM (MP4 conversion disabled due to COOP/COEP conflict)
+        if (isTauri) {
+          console.log('✅ Desktop mode: Recording is already MP4 from native capture');
+          // Trigger download
+          const a = document.createElement('a');
+          a.href = clip.url;
+          a.download = `recording-${timestamp}.mp4`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          console.log('⬇️ MP4 download triggered');
+        } else {
+          console.log('📦 Browser mode: Recording is WebM format');
+          console.log('ℹ️  MP4 conversion is disabled to allow screen capture (COOP/COEP conflict)');
+          console.log('ℹ️  Use desktop app for MP4 format or convert WebM offline');
+
+          // Note: FFmpeg conversion is intentionally disabled in browser because
+          // COOP/COEP headers required for SharedArrayBuffer block getDisplayMedia()
+          // See COOP_COEP_ISSUE_SOLUTION.md for details
+
+          // Download WebM directly
+          const a = document.createElement('a');
+          a.href = clip.url;
+          a.download = `recording-${timestamp}.webm`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          console.log('⬇️ WebM download triggered');
+        }
+
+        // Now save to state and timeline (after download completes)
+        console.log('💾 Saving clip to Kea logic');
         setLastRecording(clip);
 
-        // Automatically trigger download
-        console.log('⬇️ Auto-downloading recording...');
-        const a = document.createElement('a');
-        a.href = clip.url;
-        a.download = `recording-${new Date().toISOString().replace(/:/g, '-').slice(0, -5)}.webm`;
-        console.log(`📁 Download filename: ${a.download}`);
-        console.log(`🔗 Download URL: ${clip.url.substring(0, 50)}...`);
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        console.log('✅ Download triggered');
-
         // Automatically save to timeline after a short delay
-        // This gives user a chance to see the preview, then auto-adds to timeline
         setTimeout(() => {
           console.log('🎬 Auto-saving clip to timeline');
           saveToTimeline();
@@ -127,9 +156,42 @@ const RecordingControls = ({ className = '' }: RecordingControlsProps) => {
         </div>
       )}
 
+      {isConverting && (
+        <div className="conversion-progress">
+          <div className="progress-header">
+            <span className="progress-icon">🎬</span>
+            <span className="progress-text">Converting to MP4...</span>
+          </div>
+          <div className="progress-bar">
+            <div
+              className="progress-fill"
+              style={{ width: `${conversionProgress}%` }}
+            />
+          </div>
+          <div className="progress-percentage">{conversionProgress}%</div>
+        </div>
+      )}
+
       {!isRecording && (
         <div className="recording-config">
           <h3>Recording Options</h3>
+
+          {/* Format notice for browser users */}
+          {typeof window !== 'undefined' && !('__TAURI__' in window) && (
+            <div className="format-notice" style={{
+              padding: '8px 12px',
+              marginBottom: '12px',
+              backgroundColor: '#f0f8ff',
+              border: '1px solid #b3d9ff',
+              borderRadius: '4px',
+              fontSize: '0.875rem',
+              color: '#004085'
+            }}>
+              ℹ️ Browser recordings are saved as <strong>WebM</strong> format.
+              For MP4, use the desktop app.
+            </div>
+          )}
+
           <div className="config-options">
             <label className="config-option">
               <input

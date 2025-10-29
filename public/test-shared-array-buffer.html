@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SharedArrayBuffer Test</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    .test-result {
+      padding: 15px;
+      border-radius: 8px;
+      margin: 10px 0;
+      font-weight: bold;
+    }
+    .success {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .error {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    .info {
+      background-color: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+    code {
+      background-color: #f4f4f4;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Monaco', 'Courier New', monospace;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧪 SharedArrayBuffer Availability Test</h1>
+  <p>This page tests if SharedArrayBuffer is available, which is required for FFmpeg.js video conversion.</p>
+
+  <div id="results"></div>
+
+  <script>
+    const resultsDiv = document.getElementById('results');
+
+    function addResult(message, type = 'info') {
+      const div = document.createElement('div');
+      div.className = `test-result ${type}`;
+      div.innerHTML = message;
+      resultsDiv.appendChild(div);
+    }
+
+    // Test 1: SharedArrayBuffer availability
+    console.log('🧪 Testing SharedArrayBuffer availability...');
+    if (typeof SharedArrayBuffer !== 'undefined') {
+      addResult('✅ SharedArrayBuffer is AVAILABLE', 'success');
+      console.log('✅ SharedArrayBuffer is available');
+
+      // Test creating a SharedArrayBuffer
+      try {
+        const sab = new SharedArrayBuffer(1024);
+        addResult(`✅ Successfully created SharedArrayBuffer (${sab.byteLength} bytes)`, 'success');
+        console.log('✅ SharedArrayBuffer creation successful');
+      } catch (e) {
+        addResult(`❌ Failed to create SharedArrayBuffer: ${e.message}`, 'error');
+        console.error('❌ SharedArrayBuffer creation failed:', e);
+      }
+    } else {
+      addResult('❌ SharedArrayBuffer is NOT AVAILABLE', 'error');
+      addResult('This means FFmpeg.js conversion will NOT work. The app will fall back to WebM downloads.', 'info');
+      console.error('❌ SharedArrayBuffer is NOT available');
+    }
+
+    // Test 2: Check headers (only visible in browser DevTools Network tab)
+    addResult(`
+      <strong>To verify COOP/COEP headers:</strong><br>
+      1. Open DevTools (F12)<br>
+      2. Go to Network tab<br>
+      3. Refresh page<br>
+      4. Click on this page's request<br>
+      5. Check Response Headers for:<br>
+      <code>cross-origin-embedder-policy: require-corp</code><br>
+      <code>cross-origin-opener-policy: same-origin</code>
+    `, 'info');
+
+    // Test 3: Display current URL
+    addResult(`Current URL: <code>${window.location.href}</code>`, 'info');
+
+    // Test 4: crossOriginIsolated check
+    if (typeof crossOriginIsolated !== 'undefined') {
+      if (crossOriginIsolated) {
+        addResult('✅ Page is cross-origin isolated (required for SharedArrayBuffer)', 'success');
+        console.log('✅ crossOriginIsolated = true');
+      } else {
+        addResult('❌ Page is NOT cross-origin isolated (COOP/COEP headers may be missing)', 'error');
+        console.error('❌ crossOriginIsolated = false');
+      }
+    } else {
+      addResult('⚠️ crossOriginIsolated property not available (older browser?)', 'info');
+    }
+
+    // Test 5: FFmpeg.js compatibility
+    const isFFmpegCompatible = typeof SharedArrayBuffer !== 'undefined' &&
+                               (typeof crossOriginIsolated === 'undefined' || crossOriginIsolated);
+
+    if (isFFmpegCompatible) {
+      addResult('🎉 FFmpeg.js should work! MP4 conversion will be available.', 'success');
+      console.log('🎉 Environment is compatible with FFmpeg.js');
+    } else {
+      addResult('⚠️ FFmpeg.js may not work. Videos will download as WebM instead of MP4.', 'error');
+      console.warn('⚠️ Environment may not be compatible with FFmpeg.js');
+    }
+  </script>
+</body>
+</html>

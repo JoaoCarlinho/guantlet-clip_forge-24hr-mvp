@@ -6,11 +6,12 @@ import './TimelineClip.css';
 interface TimelineClipProps {
   clip: Clip;
   isSelected: boolean;
+  isActive?: boolean;  // Currently playing clip
   pixelsPerSecond: number;
   onSelect: () => void;
 }
 
-export default function TimelineClip({ clip, isSelected, pixelsPerSecond, onSelect }: TimelineClipProps) {
+export default function TimelineClip({ clip, isSelected, isActive = false, pixelsPerSecond, onSelect }: TimelineClipProps) {
   const { setTrimPoints, deleteClipOutsideMarkers } = useActions(timelineLogic);
   const { clipHasTrims, clipDeletionInfo } = useValues(timelineLogic);
   const clipRef = useRef<HTMLDivElement>(null);
@@ -89,7 +90,7 @@ export default function TimelineClip({ clip, isSelected, pixelsPerSecond, onSele
   return (
     <div
       ref={clipRef}
-      className={`timeline-clip ${isSelected ? 'selected' : ''}`}
+      className={`timeline-clip ${isSelected ? 'selected' : ''} ${isActive ? 'active' : ''}`}
       onClick={onSelect}
       style={{
         left: `${clip.startTime * pixelsPerSecond}px`,

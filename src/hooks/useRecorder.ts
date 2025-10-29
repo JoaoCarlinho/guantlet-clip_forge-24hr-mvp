@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { save } from '@tauri-apps/plugin-dialog';
+import { useNativeRecorder } from './useNativeRecorder';
 
 export interface RecordingConfig {
   includeWebcam: boolean;
@@ -41,7 +42,41 @@ const isGetDisplayMediaAvailable = (): boolean => {
   );
 };
 
+/**
+ * Determine which recording mode to use:
+ * - In Tauri without Media Devices API: use native recording
+ * - In browser with Media Devices API: use browser recording
+ */
+const shouldUseNativeRecording = (): boolean => {
+  const inTauri = isTauri();
+  const hasMediaAPI = isGetDisplayMediaAvailable();
+
+  // Use native recording if we're in Tauri AND don't have the Media Devices API
+  const useNative = inTauri && !hasMediaAPI;
+
+  console.log('🔍 Recording mode detection:');
+  console.log('  - Running in Tauri:', inTauri);
+  console.log('  - Media Devices API available:', hasMediaAPI);
+  console.log('  - Using native recording:', useNative);
+
+  return useNative;
+};
+
 export const useRecorder = () => {
+  const nativeRecorder = useNativeRecorder();
+
+  // Determine which recording backend to use
+  const useNative = shouldUseNativeRecording();
+
+  // If we should use native recording, return the native recorder immediately
+  if (useNative) {
+    console.log('✅ Using NATIVE recording mode (FFmpeg-based)');
+    return nativeRecorder;
+  }
+
+  console.log('✅ Using BROWSER recording mode (Media Devices API)');
+
+  // Otherwise, use the browser-based recording below
   const [state, setState] = useState<RecordingState>({
     isRecording: false,
     isPaused: false,

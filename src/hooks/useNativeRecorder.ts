@@ -117,8 +117,8 @@ export const useNativeRecorder = () => {
       console.log('📁 Reading recorded file:', outputPathRef.current);
 
       // Use Tauri FS plugin to read the file
-      const { readBinaryFile } = await import('@tauri-apps/plugin-fs');
-      const fileData = await readBinaryFile(outputPathRef.current);
+      const { readFile } = await import('@tauri-apps/plugin-fs');
+      const fileData = await readFile(outputPathRef.current);
 
       // Create blob from file data
       const blob = new Blob([fileData], { type: 'video/mp4' });

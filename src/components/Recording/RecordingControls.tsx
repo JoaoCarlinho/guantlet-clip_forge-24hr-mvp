@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useActions, useValues } from 'kea';
 import { recordingLogic } from '../../logic/recordingLogic';
 import { useRecorder } from '../../hooks/useRecorder';
-import { convertWebMToMP4, isFFmpegSupported } from '../../utils/videoConverter';
+// import { convertWebMToMP4, isFFmpegSupported } from '../../utils/videoConverter';
 import Button from '../shared/Button';
 import './RecordingControls.css';
 
@@ -23,8 +23,8 @@ const RecordingControls = ({ className = '' }: RecordingControlsProps) => {
     includeAudio: true,
   });
 
-  const [isConverting, setIsConverting] = useState(false);
-  const [conversionProgress, setConversionProgress] = useState(0);
+  // const [isConverting, setIsConverting] = useState(false);
+  // const [conversionProgress, setConversionProgress] = useState(0);
 
   const { isRecording, isPaused, recordingTime, error } = recorderState;
 
@@ -156,21 +156,7 @@ const RecordingControls = ({ className = '' }: RecordingControlsProps) => {
         </div>
       )}
 
-      {isConverting && (
-        <div className="conversion-progress">
-          <div className="progress-header">
-            <span className="progress-icon">🎬</span>
-            <span className="progress-text">Converting to MP4...</span>
-          </div>
-          <div className="progress-bar">
-            <div
-              className="progress-fill"
-              style={{ width: `${conversionProgress}%` }}
-            />
-          </div>
-          <div className="progress-percentage">{conversionProgress}%</div>
-        </div>
-      )}
+      {/* Conversion progress removed - not used with native recording */}
 
       {!isRecording && (
         <div className="recording-config">

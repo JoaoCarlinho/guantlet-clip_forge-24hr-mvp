@@ -13,7 +13,6 @@ export default function VideoPlayer() {
     effectivePreviewTime,
     activeTrimClipId,
     activeTrimType,
-    currentTime,
     nextClip,
   } = useValues(timelineLogic);
   const { setCurrentTime, pause, play, setActiveClip } = useActions(timelineLogic);

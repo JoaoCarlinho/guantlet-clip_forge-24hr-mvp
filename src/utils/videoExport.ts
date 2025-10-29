@@ -364,7 +364,7 @@ async function exportVideoNative(options: ExportOptions): Promise<ExportResult> 
     onLog?.(`Exporting ${clips.length} clip(s) to ${outputPath}...`);
 
     // Call Tauri backend
-    const result = await invoke<string>('export_video', {
+    await invoke<string>('export_video', {
       options: {
         clips: clipSegments,
         output_path: outputPath,
@@ -376,8 +376,8 @@ async function exportVideoNative(options: ExportOptions): Promise<ExportResult> 
     onLog?.('Reading exported file...');
 
     // Read the exported file
-    const { readBinaryFile } = await import('@tauri-apps/plugin-fs');
-    const fileData = await readBinaryFile(outputPath);
+    const { readFile } = await import('@tauri-apps/plugin-fs');
+    const fileData = await readFile(outputPath);
 
     // Create blob from file
     const blob = new Blob([fileData], { type: 'video/mp4' });

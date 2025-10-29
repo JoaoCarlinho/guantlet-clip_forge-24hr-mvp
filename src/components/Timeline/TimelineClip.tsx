@@ -12,7 +12,7 @@ interface TimelineClipProps {
 }
 
 export default function TimelineClip({ clip, isSelected, isActive = false, pixelsPerSecond, onSelect }: TimelineClipProps) {
-  const { setTrimPoints, deleteClipOutsideMarkers } = useActions(timelineLogic);
+  const { setTrimPoints, deleteClipOutsideMarkers, startOutMarkerDrag, updateOutMarkerPosition, endOutMarkerDrag } = useActions(timelineLogic);
   const { clipHasTrims, clipDeletionInfo } = useValues(timelineLogic);
   const clipRef = useRef<HTMLDivElement>(null);
 
@@ -29,17 +29,43 @@ export default function TimelineClip({ clip, isSelected, isActive = false, pixel
     const startX = e.clientX;
     const originalTrimStart = clip.trimStart;
 
+    // Use RAF to throttle updates for smooth performance
+    let rafId: number | null = null;
+    let pendingUpdate: { newTrimStart: number } | null = null;
+
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const deltaX = moveEvent.clientX - startX;
       const deltaTime = deltaX / pixelsPerSecond;
       const newTrimStart = Math.max(0, Math.min(clip.trimEnd - 0.1, originalTrimStart + deltaTime));
 
-      setTrimPoints(clip.id, newTrimStart, clip.trimEnd);
+      // Store the pending update
+      pendingUpdate = { newTrimStart };
+
+      // Schedule update on next animation frame if not already scheduled
+      if (rafId === null) {
+        rafId = requestAnimationFrame(() => {
+          if (pendingUpdate) {
+            setTrimPoints(clip.id, pendingUpdate.newTrimStart, clip.trimEnd);
+            pendingUpdate = null;
+          }
+          rafId = null;
+        });
+      }
     };
 
     const handleMouseUp = () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
+
+      // Cancel any pending animation frame
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
+
+      // Apply final pending update if any
+      if (pendingUpdate) {
+        setTrimPoints(clip.id, pendingUpdate.newTrimStart, clip.trimEnd);
+      }
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -52,17 +78,52 @@ export default function TimelineClip({ clip, isSelected, isActive = false, pixel
     const startX = e.clientX;
     const originalTrimEnd = clip.trimEnd;
 
+    // Start OUT marker drag - this will position playhead at OUT marker
+    startOutMarkerDrag(clip.id);
+
+    // Use RAF to throttle updates for smooth performance
+    let rafId: number | null = null;
+    let pendingUpdate: { newTrimEnd: number } | null = null;
+
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const deltaX = moveEvent.clientX - startX;
       const deltaTime = deltaX / pixelsPerSecond;
       const newTrimEnd = Math.min(clip.duration, Math.max(clip.trimStart + 0.1, originalTrimEnd + deltaTime));
 
-      setTrimPoints(clip.id, clip.trimStart, newTrimEnd);
+      // Store the pending update
+      pendingUpdate = { newTrimEnd };
+
+      // Schedule update on next animation frame if not already scheduled
+      if (rafId === null) {
+        rafId = requestAnimationFrame(() => {
+          if (pendingUpdate) {
+            setTrimPoints(clip.id, clip.trimStart, pendingUpdate.newTrimEnd);
+            // Update playhead position to follow OUT marker
+            updateOutMarkerPosition(clip.id, pendingUpdate.newTrimEnd);
+            pendingUpdate = null;
+          }
+          rafId = null;
+        });
+      }
     };
 
     const handleMouseUp = () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
+
+      // Cancel any pending animation frame
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
+
+      // Apply final pending update if any
+      if (pendingUpdate) {
+        setTrimPoints(clip.id, clip.trimStart, pendingUpdate.newTrimEnd);
+        updateOutMarkerPosition(clip.id, pendingUpdate.newTrimEnd);
+      }
+
+      // End OUT marker drag - this will snap playhead back to IN marker
+      endOutMarkerDrag();
     };
 
     document.addEventListener('mousemove', handleMouseMove);

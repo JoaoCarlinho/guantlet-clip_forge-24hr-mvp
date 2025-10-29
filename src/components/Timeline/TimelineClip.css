@@ -67,26 +67,29 @@
 /* Trim Markers */
 .trim-marker {
   position: absolute;
-  top: -5px;
-  bottom: -5px;
-  width: 3px;
+  top: -10px;
+  bottom: -10px;
+  width: 4px;
   background-color: #fbbf24;
   cursor: ew-resize;
   z-index: 10;
-  transition: background-color 0.2s;
+  transition: all 0.2s ease;
 }
 
 .trim-marker:hover {
   background-color: #f59e0b;
+  width: 6px;
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.8);
+  filter: brightness(1.2);
 }
 
 .trim-marker::before {
   content: '';
   position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 12px;
-  left: -5px;
+  top: -5px;
+  bottom: -5px;
+  width: 24px;
+  left: -10px;
   cursor: ew-resize;
 }
 
@@ -95,23 +98,69 @@
   top: 0;
   left: 50%;
   transform: translateX(-50%);
-  background-color: #fbbf24;
-  border-radius: 0 0 4px 4px;
-  padding: 2px 4px;
-  font-size: 0.625rem;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  border-radius: 0 0 6px 6px;
+  padding: 4px 8px;
+  font-size: 0.7rem;
   font-weight: 700;
   color: #000;
   white-space: nowrap;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-  pointer-events: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  cursor: ew-resize;
+  transition: all 0.2s ease;
+  border: 2px solid rgba(0, 0, 0, 0.2);
+}
+
+.trim-marker:hover .trim-marker-handle {
+  background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.5);
+  transform: translateX(-50%) translateY(-4px) scale(1.15);
+  border-color: rgba(0, 0, 0, 0.3);
+}
+
+.trim-marker:hover .trim-marker-handle::before {
+  content: '⟷';
+  position: absolute;
+  left: -18px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1rem;
+  color: #f59e0b;
+  animation: dragHint 0.8s ease-in-out infinite;
+}
+
+@keyframes dragHint {
+  0%, 100% {
+    transform: translateY(-50%) translateX(0);
+  }
+  50% {
+    transform: translateY(-50%) translateX(2px);
+  }
 }
 
 .trim-marker-in {
   border-left: 3px solid #fbbf24;
+  animation: pulseMarker 2s ease-in-out infinite;
 }
 
 .trim-marker-out {
   border-right: 3px solid #fbbf24;
+  animation: pulseMarker 2s ease-in-out infinite;
+}
+
+@keyframes pulseMarker {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.trim-marker-in:hover,
+.trim-marker-out:hover {
+  animation: none;
+  opacity: 1;
 }
 
 .trim-marker-in .trim-marker-handle {

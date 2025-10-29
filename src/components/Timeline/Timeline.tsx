@@ -31,6 +31,8 @@ export default function Timeline() {
     confirmDeleteOutsideMarkers,
     cancelDeleteOutsideMarkers,
     deleteClipOutsideMarkers,
+    setCurrentTime,
+    splitClipAtPlayhead,
   } = useActions(timelineLogic);
 
   const pixelsPerSecond = zoomLevel; // Dynamic zoom level from state
@@ -54,6 +56,104 @@ export default function Timeline() {
   const pinchAccumulator = useRef<number>(0);
   const lastPinchTime = useRef<number>(0);
   const pinchResetTimeout = useRef<number | undefined>(undefined);
+
+  // Clip selection popup state
+  const [showClipPopup, setShowClipPopup] = useState(false);
+  const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 });
+  const [overlappingClips, setOverlappingClips] = useState<Clip[]>([]);
+  const clickHoldTimer = useRef<number | undefined>(undefined);
+  const CLICK_HOLD_DURATION = 500; // ms to hold for popup
+
+  // Helper function to find clip at a specific time
+  const findClipAtTime = (time: number): Clip | null => {
+    return clips.find((clip: Clip) => time >= clip.startTime && time < clip.endTime) || null;
+  };
+
+  // Handle split at playhead
+  const handleSplitAtPlayhead = () => {
+    if (clips.length === 0) return;
+
+    const clipAtPlayhead = findClipAtTime(currentTime);
+    if (!clipAtPlayhead) {
+      console.warn('No clip at playhead position');
+      return;
+    }
+
+    // Calculate split time relative to clip start
+    const splitTime = currentTime - clipAtPlayhead.startTime;
+
+    // Validate split time is not at the very edges
+    if (splitTime <= 0.1 || splitTime >= clipAtPlayhead.duration - 0.1) {
+      console.warn('Cannot split at clip edges. Move playhead to middle of clip.');
+      return;
+    }
+
+    splitClipAtPlayhead(clipAtPlayhead.id, splitTime);
+  };
+
+  // Handle timeline click - snap playhead to position
+  const handleTimelineClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!scrollRef.current) return;
+
+    // Don't handle if clicking on a clip element or control buttons
+    const target = e.target as HTMLElement;
+    if (target.closest('.timeline-clip') || target.closest('button')) return;
+
+    const rect = scrollRef.current.getBoundingClientRect();
+    const clickX = e.clientX - rect.left + scrollRef.current.scrollLeft;
+    const clickedTime = clickX / pixelsPerSecond;
+
+    // Clamp to valid timeline range
+    const newTime = Math.max(0, Math.min(totalDuration, clickedTime));
+    setCurrentTime(newTime);
+  };
+
+  // Handle timeline mouse down - start hold timer for clip selection popup
+  const handleTimelineMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!scrollRef.current) return;
+
+    // Don't handle if clicking on a clip element or control buttons
+    const target = e.target as HTMLElement;
+    if (target.closest('.timeline-clip') || target.closest('button')) return;
+
+    const rect = scrollRef.current.getBoundingClientRect();
+    const clickX = e.clientX - rect.left + scrollRef.current.scrollLeft;
+    const clickedTime = clickX / pixelsPerSecond;
+
+    // Find all clips at this position (for overlapping clips)
+    const clipsAtPosition = clips.filter((clip: Clip) =>
+      clickedTime >= clip.startTime && clickedTime < clip.endTime
+    );
+
+    if (clipsAtPosition.length > 1) {
+      // Start timer for popup if multiple clips overlap
+      clickHoldTimer.current = window.setTimeout(() => {
+        setOverlappingClips(clipsAtPosition);
+        setPopupPosition({ x: e.clientX, y: e.clientY });
+        setShowClipPopup(true);
+      }, CLICK_HOLD_DURATION);
+    }
+  };
+
+  // Handle mouse up - cancel hold timer and snap playhead
+  const handleTimelineMouseUp = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (clickHoldTimer.current) {
+      window.clearTimeout(clickHoldTimer.current);
+      clickHoldTimer.current = undefined;
+    }
+
+    // If popup didn't show, perform click action
+    if (!showClipPopup) {
+      handleTimelineClick(e);
+    }
+  };
+
+  // Close popup when clicking outside
+  const handleClipPopupSelect = (clipId: string) => {
+    selectClip(clipId);
+    setShowClipPopup(false);
+    setOverlappingClips([]);
+  };
 
   // Keyboard shortcuts for zoom control
   useEffect(() => {
@@ -82,7 +182,7 @@ export default function Timeline() {
     return () => window.removeEventListener('keydown', handleKeyboard);
   }, [zoomIn, zoomOut, resetZoom]);
 
-  // Keyboard shortcuts for clip deletion
+  // Keyboard shortcuts for clip deletion and splitting
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Delete key or Backspace when clip is selected and has trims
@@ -93,11 +193,17 @@ export default function Timeline() {
           deleteClipOutsideMarkers(selectedClipId);
         }
       }
+
+      // S key for split at playhead
+      if (e.key === 's' || e.key === 'S') {
+        e.preventDefault();
+        handleSplitAtPlayhead();
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedClipId, clipHasTrims, deleteClipOutsideMarkers]);
+  }, [selectedClipId, clipHasTrims, deleteClipOutsideMarkers, currentTime, clips]);
 
   // Helper function to detect pinch zoom gesture
   const isPinchZoom = (e: WheelEvent): boolean => {
@@ -243,9 +349,19 @@ export default function Timeline() {
         <div className="timeline-actions">
           <span className="clips-count">{clips.length} clip{clips.length !== 1 ? 's' : ''}</span>
           {clips.length > 0 && (
-            <Button variant="secondary" onClick={() => clearTimeline()}>
-              Clear All
-            </Button>
+            <>
+              <button
+                className="split-button"
+                onClick={handleSplitAtPlayhead}
+                disabled={!findClipAtTime(currentTime)}
+                title="Split clip at playhead (S)"
+              >
+                ✂️ Split
+              </button>
+              <Button variant="secondary" onClick={() => clearTimeline()}>
+                Clear All
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -263,7 +379,12 @@ export default function Timeline() {
             <p>No clips added yet. Import video files to get started.</p>
           </div>
         ) : (
-          <div className="timeline-scroll" ref={scrollRef}>
+          <div
+            className="timeline-scroll"
+            ref={scrollRef}
+            onMouseDown={handleTimelineMouseDown}
+            onMouseUp={handleTimelineMouseUp}
+          >
             <div
               className="timeline-clips"
               style={{
@@ -285,6 +406,16 @@ export default function Timeline() {
               {currentTime > 0 && (
                 <div
                   className="playhead"
+                  style={{
+                    left: `${currentTime * pixelsPerSecond}px`,
+                  }}
+                />
+              )}
+
+              {/* Split indicator at playhead when over a clip */}
+              {currentTime > 0 && findClipAtTime(currentTime) && (
+                <div
+                  className="split-indicator"
                   style={{
                     left: `${currentTime * pixelsPerSecond}px`,
                   }}
@@ -313,6 +444,36 @@ export default function Timeline() {
         onConfirm={() => confirmDeleteOutsideMarkers(pendingDeleteClipId!)}
         onCancel={() => cancelDeleteOutsideMarkers()}
       />
+
+      {/* Clip Selection Popup */}
+      {showClipPopup && overlappingClips.length > 0 && (
+        <div
+          className="clip-selection-popup"
+          style={{
+            position: 'fixed',
+            left: `${popupPosition.x}px`,
+            top: `${popupPosition.y}px`,
+            zIndex: 1000,
+          }}
+        >
+          <div className="popup-title">Select Clip:</div>
+          {overlappingClips.map((clip: Clip) => (
+            <button
+              key={clip.id}
+              className="popup-clip-option"
+              onClick={() => handleClipPopupSelect(clip.id)}
+            >
+              {clip.name}
+            </button>
+          ))}
+          <button
+            className="popup-cancel"
+            onClick={() => setShowClipPopup(false)}
+          >
+            Cancel
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -199,26 +199,39 @@ export default function VideoPlayer() {
     }
   }, [isPlaying, currentClip?.id]);
 
-  // Update video preview during trim adjustment
+  // Update video preview during trim adjustment - with throttling for smooth performance
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !currentClip) return;
 
     // Only update preview if we have a preview time
-    if (effectivePreviewTime !== null) {
-      // Check if this is an active trim operation
-      const isActiveTrim = activeTrimClipId === currentClip.id;
+    if (effectivePreviewTime !== null && !isPlaying) {
+      // Throttle video seeking using requestAnimationFrame for smooth performance
+      let rafId: number | null = null;
 
-      if (isActiveTrim) {
-        // During active trim: seek to preview time immediately
-        video.currentTime = effectivePreviewTime;
-      } else if (!isPlaying) {
-        // Not actively trimming, but video is paused: show IN marker frame
-        video.currentTime = effectivePreviewTime;
+      const updateVideoTime = () => {
+        if (video && effectivePreviewTime !== null) {
+          // Only seek if the difference is significant (avoid micro-seeks)
+          const timeDiff = Math.abs(video.currentTime - effectivePreviewTime);
+          if (timeDiff > 0.016) { // ~1 frame at 60fps
+            video.currentTime = effectivePreviewTime;
+          }
+        }
+        rafId = null;
+      };
+
+      // Schedule update on next animation frame if not already scheduled
+      if (rafId === null) {
+        rafId = requestAnimationFrame(updateVideoTime);
       }
-      // If playing, don't interrupt playback
+
+      return () => {
+        if (rafId !== null) {
+          cancelAnimationFrame(rafId);
+        }
+      };
     }
-  }, [effectivePreviewTime, activeTrimClipId, currentClip?.id, isPlaying]);
+  }, [effectivePreviewTime, currentClip?.id, isPlaying]);
 
   // Cleanup video resources on unmount
   useEffect(() => {

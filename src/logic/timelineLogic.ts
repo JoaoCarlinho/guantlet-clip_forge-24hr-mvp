@@ -27,6 +27,9 @@ export interface TimelineState {
   activeTrimClipId: string | null;
   activeTrimType: 'in' | 'out' | null;
   previewTime: number | null;
+  // OUT marker drag state for playhead positioning
+  isDraggingOutMarker: boolean;
+  draggingOutMarkerClipId: string | null;
 }
 
 export const timelineLogic = kea([
@@ -62,10 +65,16 @@ export const timelineLogic = kea([
     }),
     updateTrimPreview: (time) => ({ time }),
     endTrimDrag: true,
+    // OUT marker drag actions for playhead positioning
+    startOutMarkerDrag: (clipId) => ({ clipId }),
+    updateOutMarkerPosition: (clipId, trimEnd) => ({ clipId, trimEnd }),
+    endOutMarkerDrag: true,
     // Delete actions
     deleteClipOutsideMarkers: (clipId) => ({ clipId }),
     confirmDeleteOutsideMarkers: (clipId) => ({ clipId }),
     cancelDeleteOutsideMarkers: true,
+    // Split actions
+    splitClipAtPlayhead: (clipId, splitTime) => ({ clipId, splitTime }),
   }),
 
   reducers({
@@ -184,9 +193,158 @@ export const timelineLogic = kea([
         clearTimeline: () => null,
       },
     ],
+    // OUT marker drag state
+    isDraggingOutMarker: [
+      false as boolean,
+      {
+        startOutMarkerDrag: () => true,
+        endOutMarkerDrag: () => false,
+        selectClip: () => false,
+        clearTimeline: () => false,
+      },
+    ],
+    draggingOutMarkerClipId: [
+      null as string | null,
+      {
+        startOutMarkerDrag: (_, { clipId }) => clipId,
+        endOutMarkerDrag: () => null,
+        selectClip: () => null,
+        clearTimeline: () => null,
+      },
+    ],
   }),
 
   listeners(({ actions, values }) => ({
+    // Split clip at playhead position
+    splitClipAtPlayhead: ({ clipId, splitTime }) => {
+      const clip = values.clips.find((c: Clip) => c.id === clipId);
+      if (!clip) return;
+
+      // Validate split time is within clip bounds
+      if (splitTime <= 0 || splitTime >= clip.duration) {
+        console.warn('Split time must be within clip bounds');
+        return;
+      }
+
+      console.log(`✂️ Splitting clip "${clip.name}" at ${splitTime.toFixed(2)}s`);
+
+      // Calculate properties for the first half (before split)
+      const clipA = {
+        id: `${clip.id}_a_${Date.now()}`,
+        name: `${clip.name} (Part 1)`,
+        filePath: clip.filePath,
+        originalFilePath: clip.originalFilePath,
+        duration: splitTime,
+        startTime: clip.startTime,
+        endTime: clip.startTime + splitTime,
+        trimStart: clip.trimStart,
+        trimEnd: clip.trimStart + splitTime,
+        sourceDuration: clip.sourceDuration,
+        sourceStart: clip.sourceStart,
+        sourceEnd: clip.sourceStart + splitTime,
+      };
+
+      // Calculate properties for the second half (after split)
+      const clipB = {
+        id: `${clip.id}_b_${Date.now()}`,
+        name: `${clip.name} (Part 2)`,
+        filePath: clip.filePath,
+        originalFilePath: clip.originalFilePath,
+        duration: clip.duration - splitTime,
+        startTime: clip.startTime + splitTime,
+        endTime: clip.endTime,
+        trimStart: 0,
+        trimEnd: clip.duration - splitTime,
+        sourceDuration: clip.sourceDuration,
+        sourceStart: clip.sourceStart + splitTime,
+        sourceEnd: clip.sourceEnd,
+      };
+
+      // Find the index of the clip being split
+      const clipIndex = values.clips.findIndex((c: Clip) => c.id === clipId);
+      if (clipIndex === -1) return;
+
+      // Remove the original clip
+      actions.removeClip(clipId);
+
+      // Insert both halves at the original position
+      // We need to manually reconstruct the clips array to maintain order
+      const newClips = [...values.clips.filter((c: Clip) => c.id !== clipId)];
+      newClips.splice(clipIndex, 0, clipA, clipB);
+
+      // Clear and re-add all clips in the correct order
+      actions.clearTimeline();
+      newClips.forEach(c => {
+        // For split clips, we need to preserve their calculated positions
+        const isNewSplitClip = c.id === clipA.id || c.id === clipB.id;
+        if (isNewSplitClip) {
+          // Add with a temporary duration, then update with correct properties
+          actions.addClip({
+            ...c,
+            duration: c.duration,
+            startTime: 0, // Will be recalculated by addClip
+            endTime: 0,
+          });
+          // Update to set correct timeline positions
+          const addedClipIndex = values.clips.findIndex((clip: Clip) => clip.id === c.id);
+          if (addedClipIndex !== -1) {
+            actions.updateClip(c.id, {
+              startTime: c.startTime,
+              endTime: c.endTime,
+            });
+          }
+        } else {
+          actions.addClip(c);
+        }
+      });
+
+      // Select the first half
+      actions.selectClip(clipA.id);
+
+      console.log(`✅ Split complete: "${clipA.name}" and "${clipB.name}"`);
+    },
+
+    // Auto-select clip when playhead moves to it
+    setCurrentTime: ({ time }) => {
+      const { clips, isPlaying } = values;
+
+      // Don't auto-select during playback
+      if (isPlaying) return;
+
+      // Find clip at the new playhead position
+      const clipAtPosition = clips.find(
+        (c: Clip) => time >= c.startTime && time < c.endTime
+      );
+
+      // Auto-select the clip if found
+      if (clipAtPosition) {
+        actions.selectClip(clipAtPosition.id);
+      }
+    },
+
+    // Update playhead position when OUT marker is dragged
+    updateOutMarkerPosition: ({ clipId, trimEnd }) => {
+      const clip = values.clips.find((c: Clip) => c.id === clipId);
+      if (!clip) return;
+
+      // Position playhead at the OUT marker position (clip start + trimEnd)
+      const outMarkerTime = clip.startTime + trimEnd;
+      actions.setCurrentTime(outMarkerTime);
+    },
+
+    // When OUT marker drag ends, snap playhead back to IN marker
+    endOutMarkerDrag: () => {
+      const { draggingOutMarkerClipId } = values;
+      if (!draggingOutMarkerClipId) return;
+
+      const clip = values.clips.find((c: Clip) => c.id === draggingOutMarkerClipId);
+      if (!clip) return;
+
+      // Snap playhead to IN marker position (clip start + trimStart)
+      const inMarkerTime = clip.startTime + clip.trimStart;
+      actions.setCurrentTime(inMarkerTime);
+    },
+
     // Set active clip when play is initiated
     play: () => {
       const { clips, currentTime, clipAtTime, totalDuration } = values;
@@ -356,20 +514,24 @@ export const timelineLogic = kea([
         s.selectedClip,
         s.activeTrimClipId,
         s.previewTime,
+        s.currentTime,
       ],
       (
         selectedClip: Clip | null,
         activeTrimClipId: string | null,
-        previewTime: number | null
+        previewTime: number | null,
+        currentTime: number
       ): number | null => {
-        // If actively trimming, use the preview time
+        // If actively trimming IN/OUT markers, use the preview time
         if (activeTrimClipId && previewTime !== null) {
           return previewTime;
         }
 
-        // Default: show frame at IN marker of selected clip
+        // Always follow playhead position - convert global timeline position to clip-relative time
         if (selectedClip) {
-          return selectedClip.trimStart;
+          const clipRelativeTime = currentTime - selectedClip.startTime;
+          // Ensure we're within the clip's bounds
+          return Math.max(0, Math.min(selectedClip.duration, clipRelativeTime));
         }
 
         return null;

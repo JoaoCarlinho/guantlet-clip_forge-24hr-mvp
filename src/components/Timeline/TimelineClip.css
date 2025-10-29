@@ -1,0 +1,172 @@
+/* Timeline Clip Styles */
+.timeline-clip {
+  position: relative;
+}
+
+.trim-region {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+
+.trim-region-out {
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(0, 0, 0, 0.6),
+    rgba(0, 0, 0, 0.6) 5px,
+    rgba(0, 0, 0, 0.4) 5px,
+    rgba(0, 0, 0, 0.4) 10px
+  );
+  border-left: 2px solid rgba(211, 47, 47, 0.5);
+  border-right: 2px solid rgba(211, 47, 47, 0.5);
+}
+
+/* Pulsing animation when clip is selected and trimmed */
+.timeline-clip.selected .trim-region-out {
+  animation: pulseWarning 2s ease-in-out infinite;
+}
+
+@keyframes pulseWarning {
+  0%, 100% {
+    background-color: rgba(0, 0, 0, 0.6);
+  }
+  50% {
+    background-color: rgba(211, 47, 47, 0.3);
+  }
+}
+
+.clip-content {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 0.75rem;
+  z-index: 1;
+}
+
+/* Trim Markers */
+.trim-marker {
+  position: absolute;
+  top: -5px;
+  bottom: -5px;
+  width: 3px;
+  background-color: #fbbf24;
+  cursor: ew-resize;
+  z-index: 10;
+  transition: background-color 0.2s;
+}
+
+.trim-marker:hover {
+  background-color: #f59e0b;
+}
+
+.trim-marker::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 12px;
+  left: -5px;
+  cursor: ew-resize;
+}
+
+.trim-marker-handle {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #fbbf24;
+  border-radius: 0 0 4px 4px;
+  padding: 2px 4px;
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: #000;
+  white-space: nowrap;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+}
+
+.trim-marker-in {
+  border-left: 3px solid #fbbf24;
+}
+
+.trim-marker-out {
+  border-right: 3px solid #fbbf24;
+}
+
+.trim-marker-in .trim-marker-handle {
+  left: 3px;
+  transform: none;
+}
+
+.trim-marker-out .trim-marker-handle {
+  right: 3px;
+  left: auto;
+  transform: none;
+}
+
+.trim-marker-label {
+  display: inline-block;
+  font-size: 0.625rem;
+  letter-spacing: 0.5px;
+}
+
+/* Active dragging states */
+.trim-marker:active,
+.trim-marker.dragging {
+  background-color: #f59e0b;
+  box-shadow: 0 0 8px rgba(251, 191, 36, 0.6);
+}
+
+/* Delete button */
+.clip-delete-button {
+  position: absolute;
+  top: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #d32f2f;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  z-index: 10;
+  white-space: nowrap;
+}
+
+.clip-delete-button:hover {
+  background-color: #e53935;
+  box-shadow: 0 4px 12px rgba(211, 47, 47, 0.4);
+  transform: translateX(-50%) translateY(-2px);
+}
+
+.clip-delete-button:active {
+  transform: translateX(-50%) translateY(0);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.delete-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.delete-label {
+  font-size: 0.85rem;
+}
+
+/* Hide label on narrow clips */
+@media (max-width: 768px) {
+  .delete-label {
+    display: none;
+  }
+}

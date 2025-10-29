@@ -1,0 +1,258 @@
+@import './TimelineClip.css';
+
+.timeline-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  min-width: 0;
+  background-color: #1a1a1a;
+  border-radius: 8px;
+  overflow: hidden; /* Keep hidden to maintain rounded corners */
+}
+
+.timeline-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background-color: #222;
+  border-bottom: 1px solid #333;
+}
+
+.playback-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.control-button {
+  background-color: #333;
+  border: 1px solid #444;
+  color: #fff;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1.2rem;
+  transition: background-color 0.2s;
+  min-width: 60px;
+}
+
+.control-button:hover:not(:disabled) {
+  background-color: #444;
+}
+
+.control-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.timeline-time {
+  font-family: monospace;
+  font-size: 1rem;
+  color: #aaa;
+  min-width: 150px;
+}
+
+.timeline-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.clips-count {
+  font-size: 0.875rem;
+  color: #888;
+  font-weight: 500;
+}
+
+/* Zoom Controls */
+.zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 1rem;
+  border-left: 1px solid #333;
+  margin-left: 1rem;
+}
+
+.zoom-button {
+  background-color: #333;
+  border: 1px solid #444;
+  color: #fff;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1.2rem;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+  padding: 0;
+  line-height: 1;
+}
+
+.zoom-button:hover {
+  background-color: #444;
+}
+
+.zoom-button:active {
+  background-color: #555;
+}
+
+.zoom-level-indicator {
+  min-width: 50px;
+  text-align: center;
+  font-family: monospace;
+  font-size: 0.875rem;
+  color: #aaa;
+  user-select: none;
+}
+
+.zoom-reset-button {
+  background-color: #333;
+  border: 1px solid #444;
+  color: #aaa;
+  padding: 0.375rem 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  transition: all 0.2s;
+}
+
+.zoom-reset-button:hover {
+  background-color: #444;
+  color: #fff;
+}
+
+.timeline-track {
+  flex: 1;
+  position: relative;
+  background-color: #1a1a1a;
+  overflow-x: auto;
+  overflow-y: auto; /* Allow scrolling if timeline gets too tall */
+}
+
+/* Pinch Zoom Indicator */
+.pinch-zoom-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-size: 1.25rem;
+  font-weight: 600;
+  pointer-events: none;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  animation: fadeIn 0.15s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.timeline-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #666;
+}
+
+.timeline-scroll {
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: visible; /* Must be visible so delete button can extend above */
+  padding: 1rem;
+  padding-top: 3.5rem; /* Extra padding at top to ensure button is visible */
+}
+
+.timeline-clips {
+  position: relative;
+  height: 180px; /* Increased to give plenty of room for everything */
+  min-width: 100%;
+}
+
+.timeline-clip {
+  position: absolute;
+  top: 80px; /* Positioned further down to ensure 80px clearance above for button (40px) + margin (40px) */
+  height: 50px;
+  background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
+  border: 2px solid #4a5568;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  padding: 0 0.75rem;
+  overflow: visible; /* Changed from hidden to allow trim markers and delete button to show */
+  min-width: 80px;
+}
+
+.timeline-clip:hover {
+  border-color: #646cff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.timeline-clip.selected {
+  border-color: #646cff;
+  box-shadow: 0 0 10px rgba(100, 108, 255, 0.5);
+  background: linear-gradient(135deg, #646cff 0%, #535bf2 100%);
+}
+
+.clip-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: 100%;
+}
+
+.clip-name {
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.clip-duration {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.75rem;
+  font-family: monospace;
+}
+
+.playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background-color: #ef4444;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.playhead::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -4px;
+  width: 10px;
+  height: 10px;
+  background-color: #ef4444;
+  border-radius: 50%;
+}

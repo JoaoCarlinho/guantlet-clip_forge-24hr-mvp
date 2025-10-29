@@ -1,0 +1,37 @@
+{
+  "name": "clip_forge",
+  "version": "1.0.0",
+  "description": "ClipForge - Video editing application built with Tauri",
+  "type": "module",
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "tsc && vite build && tauri build",
+    "preview": "vite preview"
+  },
+  "repository": "https://github.com/JoaoCarlinho/guantlet-clip_forge-24hr-mvp.git",
+  "author": "JoaoCarlinho <JSkeete@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "@ffmpeg/ffmpeg": "^0.12.15",
+    "@ffmpeg/util": "^0.12.2",
+    "@tauri-apps/api": "^2.9.0",
+    "@tauri-apps/plugin-dialog": "^2.4.2",
+    "@tauri-apps/plugin-fs": "^2.4.4",
+    "@tauri-apps/plugin-shell": "^2.3.3",
+    "kea": "^3.1.7",
+    "kea-loaders": "^3.1.1",
+    "kea-router": "^3.4.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^7.9.4"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.9.1",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "@vitejs/plugin-react": "^5.1.0",
+    "kea-typegen": "^3.5.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.12"
+  }
+}

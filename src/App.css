@@ -1,0 +1,109 @@
+/* App Container */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+/* Header */
+.app-header {
+  background-color: #1a1a1a;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid #333;
+  flex-shrink: 0;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #fff;
+}
+
+/* Main Content */
+.app-main {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  width: 100%;
+}
+
+/* Editor View */
+.editor-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.editor-layout {
+  display: grid;
+  grid-template-columns: 1fr 350px;
+  grid-template-rows: 2fr 1fr;
+  height: 100%;
+  width: 100vw;
+  max-width: 100vw;
+  min-width: 0;
+  gap: 1rem;
+  padding: 1rem;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* When no export sidebar */
+.editor-layout:not(:has(.export-sidebar)) {
+  grid-template-columns: 1fr;
+}
+
+/* Player Section */
+.player-section {
+  grid-column: 1;
+  grid-row: 1;
+  background-color: #0a0a0a;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  min-width: 0;
+  min-height: 0;
+}
+
+.player-placeholder {
+  color: #666;
+  font-size: 1.2rem;
+}
+
+/* Timeline Section */
+.timeline-section {
+  grid-column: 1;
+  grid-row: 2;
+  background-color: #1a1a1a;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.timeline-placeholder {
+  color: #666;
+  font-size: 1.2rem;
+}
+
+/* Export Sidebar */
+.export-sidebar {
+  grid-column: 2;
+  grid-row: 1 / -1;
+  background-color: #1a1a1a;
+  border-radius: 8px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}

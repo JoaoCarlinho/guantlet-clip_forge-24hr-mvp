@@ -1,0 +1,134 @@
+.video-player-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: #0a0a0a;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.video-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.video-element {
+  /* Removed max-width and max-height - using inline styles instead */
+  border-radius: 4px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.video-info {
+  background-color: #1a1a1a;
+  padding: 0.75rem 1rem;
+  border-radius: 4px;
+  border: 1px solid #333;
+  color: #aaa;
+  font-size: 0.875rem;
+  min-width: 350px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.info-label {
+  font-weight: 600;
+  color: #888;
+  white-space: nowrap;
+}
+
+.info-value {
+  color: #ccc;
+  font-family: monospace;
+  font-size: 0.8rem;
+  text-align: right;
+}
+
+.trim-warning {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background-color: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 4px;
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+  color: #fbbf24;
+}
+
+.warning-icon {
+  font-size: 1rem;
+}
+
+.video-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #666;
+}
+
+.placeholder-content {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.placeholder-content svg {
+  opacity: 0.3;
+}
+
+.placeholder-content p {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.placeholder-hint {
+  font-size: 0.9rem !important;
+  color: #555;
+}
+
+/* Trim Preview Indicator */
+.trim-preview-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background-color: rgba(100, 108, 255, 0.1);
+  border: 1px solid rgba(100, 108, 255, 0.3);
+  border-radius: 4px;
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+  color: #646cff;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.preview-icon {
+  font-size: 1rem;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

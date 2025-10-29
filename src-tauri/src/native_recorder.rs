@@ -101,7 +101,6 @@ pub async fn stop_native_recording(
         // Send SIGINT to gracefully stop recording
         #[cfg(unix)]
         {
-            use std::os::unix::process::CommandExt;
             unsafe {
                 libc::kill(child.id() as i32, libc::SIGINT);
             }

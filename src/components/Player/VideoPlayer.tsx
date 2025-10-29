@@ -19,6 +19,10 @@ export default function VideoPlayer() {
   const { setCurrentTime, pause, play, setActiveClip } = useActions(timelineLogic);
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  // Throttle state updates to prevent performance issues
+  const lastUpdateTime = useRef<number>(0);
+  const UPDATE_INTERVAL = 100; // Update state every 100ms (10 times per second)
+
   // Use activeClip when playing, selectedClip for preview, fallback to first clip
   const currentClip = (isPlaying && activeClip)
     ? activeClip
@@ -62,23 +66,13 @@ export default function VideoPlayer() {
       // Wait for metadata before setting currentTime to avoid black screen
       const setInitialTime = () => {
         if (videoRef.current && videoRef.current.readyState >= 1) {
-          // Calculate correct position in source video based on global timeline position
-          const globalTime = currentTime;
-          const relativeTime = globalTime - currentClip.startTime;
-          const sourceTime = currentClip.sourceStart + relativeTime;
+          // When clip changes, start at sourceStart (beginning of clip)
+          // Don't use currentTime here to avoid dependency loop
+          videoRef.current.currentTime = currentClip.sourceStart;
 
-          // Clamp to valid range
-          videoRef.current.currentTime = Math.max(
-            currentClip.sourceStart,
-            Math.min(sourceTime, currentClip.sourceEnd)
-          );
-
-          console.log('⏱️ Set video time:', {
-            globalTime,
-            relativeTime,
-            sourceTime: videoRef.current.currentTime,
-            clipStart: currentClip.startTime,
+          console.log('⏱️ Set video time to sourceStart:', {
             sourceStart: currentClip.sourceStart,
+            clipName: currentClip.name,
           });
         }
       };
@@ -168,7 +162,7 @@ export default function VideoPlayer() {
         video.removeEventListener('error', handleError);
       };
     }
-  }, [currentClip?.id, currentClip?.filePath, currentTime]);
+  }, [currentClip?.id, currentClip?.filePath]);
 
   // Sync isPlaying state with actual video playback
   useEffect(() => {
@@ -244,6 +238,8 @@ export default function VideoPlayer() {
 
     if (!currentClip || !isPlaying) return;
 
+    const now = Date.now();
+
     // Calculate current global timeline position
     const relativeTimeInClip = video.currentTime - currentClip.sourceStart;
     const globalTime = currentClip.startTime + relativeTimeInClip;
@@ -252,6 +248,7 @@ export default function VideoPlayer() {
     const END_THRESHOLD = 0.05; // 50ms threshold
 
     // Check if we've reached the end of current clip (trimEnd in source video)
+    // Always check for clip end, regardless of throttling
     if (video.currentTime >= (currentClip.sourceEnd - END_THRESHOLD)) {
       console.log('🎬 Reached end of clip:', currentClip.name);
 
@@ -266,6 +263,7 @@ export default function VideoPlayer() {
 
         // Update global timeline position to start of next clip
         setCurrentTime(nextClipToPlay.startTime);
+        lastUpdateTime.current = now; // Reset throttle timer
 
         // The video source will change via useEffect, which will:
         // 1. Load the new video file (if different)
@@ -279,8 +277,13 @@ export default function VideoPlayer() {
         return;
       }
     } else {
-      // Normal playback - update global timeline position
-      setCurrentTime(globalTime);
+      // Normal playback - throttle state updates to reduce re-renders
+      const shouldUpdate = (now - lastUpdateTime.current) >= UPDATE_INTERVAL;
+
+      if (shouldUpdate) {
+        setCurrentTime(globalTime);
+        lastUpdateTime.current = now;
+      }
     }
 
     // Don't allow seeking before source start
